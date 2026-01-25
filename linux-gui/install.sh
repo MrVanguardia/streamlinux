@@ -100,11 +100,15 @@ install_dependencies() {
         apt-get install -y gir1.2-adw-1 2>/dev/null || \
         apt-get install -y libadwaita-1-0 gir1.2-adw-1 2>/dev/null || true
         
-        # GStreamer
+        # GStreamer - including WebRTC support
         apt-get install -y \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
             gstreamer1.0-plugins-bad gstreamer1.0-libav \
-            gstreamer1.0-pipewire 2>/dev/null || true
+            gstreamer1.0-pipewire gstreamer1.0-nice \
+            gir1.2-gst-plugins-bad-1.0 gir1.2-nice-0.1 2>/dev/null || true
+        
+        # GStreamer introspection for WebRTC (different package names)
+        apt-get install -y libgstreamer-plugins-bad1.0-dev 2>/dev/null || true
         
         # Python packages - try apt first, then pip
         apt-get install -y python3-pil python3-pillow 2>/dev/null || true
