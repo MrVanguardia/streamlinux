@@ -659,11 +659,11 @@ copies or substantial portions of the Software.
 If StreamLinux has been useful to you, consider:
 
 [![Star](https://img.shields.io/badge/⭐_Star_on_GitHub-181717?style=for-the-badge&logo=github)](https://github.com/MrVanguardia/streamlinux)
-[![Donate](https://img.shields.io/badge/💝_Donate_via_PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://www.paypal.com/invoice/p/#ENPBS57FGYS3EB9J)
+[![Donate](https://img.shields.io/badge/💝_Donate_via_PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/TheElvis1)
 
 ---
 
-**Made with ❤️ by [Vanguardia Studio](https://vanguardiastudio.us)**
+**Made with ❤️ by [Elvis Manuel](https://vanguardiastudio.us)**
 
 [![Website](https://img.shields.io/badge/Website-vanguardiastudio.us-0066FF?style=flat-square&logo=google-chrome&logoColor=white)](https://vanguardiastudio.us)
 [![GitHub](https://img.shields.io/badge/GitHub-MrVanguardia-181717?style=flat-square&logo=github)](https://github.com/MrVanguardia)
