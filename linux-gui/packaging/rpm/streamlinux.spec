@@ -1,5 +1,5 @@
 Name:           streamlinux
-Version:        1.0.1
+Version:        1.1.1
 Release:        1%{?dist}
 Summary:        Stream your Linux screen to Android devices
 
@@ -17,6 +17,7 @@ Requires:       python3-gobject
 Requires:       python3-pillow
 Requires:       python3-qrcode
 Requires:       python3-websockets
+Requires:       python3-cryptography
 Requires:       gstreamer1
 Requires:       gstreamer1-plugins-base
 Requires:       gstreamer1-plugins-good
@@ -36,6 +37,8 @@ Features:
 - QR code for easy mobile connection
 - Modern GTK4/libadwaita interface
 - Multi-language support (English/Spanish)
+- Token-based security for connections
+- Improved streaming lifecycle (start/stop/restart)
 
 %prep
 %autosetup
@@ -52,6 +55,7 @@ install -D -m 644 webrtc_streamer.py "%{buildroot}%{_datadir}/streamlinux/webrtc
 install -D -m 644 i18n.py "%{buildroot}%{_datadir}/streamlinux/i18n.py"
 install -D -m 644 portal_screencast.py "%{buildroot}%{_datadir}/streamlinux/portal_screencast.py"
 install -D -m 644 usb_manager.py "%{buildroot}%{_datadir}/streamlinux/usb_manager.py"
+install -D -m 644 security.py "%{buildroot}%{_datadir}/streamlinux/security.py"
 
 # Install desktop file
 install -D -m 644 data/com.streamlinux.host.desktop "%{buildroot}%{_datadir}/applications/com.streamlinux.host.desktop"
@@ -71,11 +75,19 @@ desktop-file-validate "%{buildroot}%{_datadir}/applications/com.streamlinux.host
 %{_datadir}/streamlinux/i18n.py
 %{_datadir}/streamlinux/portal_screencast.py
 %{_datadir}/streamlinux/usb_manager.py
+%{_datadir}/streamlinux/security.py
 %{_datadir}/applications/com.streamlinux.host.desktop
 %{_datadir}/icons/hicolor/scalable/apps/streamlinux.svg
 %{_datadir}/metainfo/com.streamlinux.host.metainfo.xml
 
 %changelog
+* Sat Jan 25 2025 Vanguardia Studio <contact@vanguardiastudio.us> - 1.1.0-1
+- Added security module with PIN-based device authorization
+- Cryptographically secure session tokens
+- Rate limiting for connection attempts
+- Device whitelist with trust management
+- Automatic token expiration and refresh
+
 * Sat Jan 25 2025 Vanguardia Studio <contact@vanguardiastudio.us> - 1.0.1-1
 - Added multi-language support (English/Spanish)
 - Language auto-detection from system settings

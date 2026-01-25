@@ -61,7 +61,14 @@ except ImportError:
     def get_i18n(): return None
     def set_language(lang): pass
     def get_language(): return 'en'
-    def get_language(): return 'en'
+
+# Import Security module
+try:
+    from security import SecurityManager, get_security_manager, PendingConnection, AuthorizedDevice
+    HAS_SECURITY = True
+except ImportError:
+    HAS_SECURITY = False
+    print("Warning: Security module not available - connections will not be secured")
 
 
 class AppConfig:
@@ -93,6 +100,12 @@ class AppConfig:
         'port': 54321,
         'stun_server': 'stun:stun.l.google.com:19302',
         'turn_server': '',
+        
+        # Security settings
+        'security_require_auth': True,    # Require authentication for connections
+        'security_require_pin': True,     # Show PIN for new devices
+        'security_auto_trust': False,     # Auto-trust devices after first connection
+        'security_token_expiry': 300,     # Token validity in seconds (5 min)
         
         # Startup settings
         'autostart': False,
@@ -269,6 +282,14 @@ class MainWindow(Adw.ApplicationWindow):
         
         # WebRTC Streamer
         self.streamer = None
+        
+        # Security Manager
+        self.security_manager = None
+        if HAS_SECURITY:
+            self.security_manager = get_security_manager()
+            self.security_manager.on_connection_request = self._on_connection_request
+            self.security_manager.on_connection_authorized = self._on_connection_authorized
+            self.security_manager.on_connection_rejected = self._on_connection_rejected
         
         # USB Manager for ADB port forwarding
         self.usb_manager = None
@@ -960,6 +981,74 @@ class MainWindow(Adw.ApplicationWindow):
         """Callback when USB state changes"""
         GLib.idle_add(self._update_usb_ui)
 
+    # === Security Callbacks ===
+    
+    def _on_connection_request(self, pending):
+        """Called when a new device tries to connect and needs authorization"""
+        GLib.idle_add(self._show_auth_dialog, pending)
+    
+    def _show_auth_dialog(self, pending):
+        """Show authorization dialog for pending connection"""
+        dialog = Adw.AlertDialog()
+        dialog.set_heading(_('security_connection_request'))
+        dialog.set_body(
+            f"{_('security_device_wants_connect')}\n\n"
+            f"📱 {_('device')}: {pending.device_name}\n"
+            f"🔑 PIN: {pending.pin}\n\n"
+            f"{_('security_enter_pin_on_device')}"
+        )
+        
+        dialog.add_response("reject", _('btn_reject'))
+        dialog.add_response("approve", _('btn_approve'))
+        dialog.set_response_appearance("reject", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_response_appearance("approve", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("approve")
+        dialog.set_close_response("reject")
+        
+        # Store pending info for callback
+        dialog._pending = pending
+        dialog.connect("response", self._on_auth_dialog_response)
+        dialog.present(self)
+        
+        # Also show a toast with the PIN
+        toast = Adw.Toast.new(f"🔐 PIN: {pending.pin}")
+        toast.set_timeout(30)
+        self.toast_overlay.add_toast(toast)
+        
+        return False
+    
+    def _on_auth_dialog_response(self, dialog, response):
+        """Handle authorization dialog response"""
+        pending = dialog._pending
+        if response == "approve":
+            if self.security_manager:
+                self.security_manager.approve_pending_connection(pending.connection_id)
+        else:
+            if self.security_manager:
+                self.security_manager.reject_pending_connection(pending.connection_id)
+    
+    def _on_connection_authorized(self, device_id, device_name):
+        """Called when a device is authorized"""
+        GLib.idle_add(self._handle_connection_authorized, device_id, device_name)
+    
+    def _handle_connection_authorized(self, device_id, device_name):
+        """Handle authorized connection on main thread"""
+        toast = Adw.Toast.new(f"✅ {_('security_device_authorized')}: {device_name}")
+        toast.set_timeout(5)
+        self.toast_overlay.add_toast(toast)
+        return False
+    
+    def _on_connection_rejected(self, device_id, reason):
+        """Called when a connection is rejected"""
+        GLib.idle_add(self._handle_connection_rejected, device_id, reason)
+    
+    def _handle_connection_rejected(self, device_id, reason):
+        """Handle rejected connection on main thread"""
+        toast = Adw.Toast.new(f"❌ {_('security_connection_rejected')}: {reason}")
+        toast.set_timeout(5)
+        self.toast_overlay.add_toast(toast)
+        return False
+
     def _get_machine_id(self) -> str:
         """Get unique machine identifier"""
         try:
@@ -978,22 +1067,31 @@ class MainWindow(Adw.ApplicationWindow):
         return hashlib.sha256(token_data.encode()).hexdigest()[:12]
     
     def update_qr_code(self):
-        """Generate and display QR code with unique token"""
+        """Generate and display QR code with secure token"""
         if not HAS_QRCODE:
             return
         
-        # Generate unique session token
-        session_token = self._generate_session_token()
-        
-        # Create connection data with unique token
-        data = json.dumps({
-            "name": socket.gethostname(),
-            "address": self.local_ip,
-            "port": self.config.get('port'),
-            "machine_id": self._get_machine_id(),
-            "token": session_token,
-            "timestamp": int(time.time())
-        })
+        # Use security manager for secure tokens if available
+        if HAS_SECURITY and self.security_manager:
+            connection_info = self.security_manager.generate_connection_info(
+                host_ip=self.local_ip,
+                port=self.config.get('port'),
+                hostname=socket.gethostname()
+            )
+            data = json.dumps(connection_info)
+            session_token = connection_info.get('token', '')[:12]
+        else:
+            # Fallback to old method (less secure)
+            session_token = self._generate_session_token()
+            data = json.dumps({
+                "version": 1,
+                "name": socket.gethostname(),
+                "address": self.local_ip,
+                "port": self.config.get('port'),
+                "machine_id": self._get_machine_id(),
+                "token": session_token,
+                "timestamp": int(time.time())
+            })
         
         # Generate QR code
         qr = qrcode.QRCode(
@@ -1025,7 +1123,7 @@ class MainWindow(Adw.ApplicationWindow):
             texture = Gdk.Texture.new_for_pixbuf(pixbuf)
         self.qr_image.set_paintable(texture)
         
-        print(f"QR updated with token: {session_token}")
+        print(f"🔒 QR updated with secure token: {session_token}...")
     
     def _start_qr_refresh_timer(self):
         """Start timer to refresh QR code every minute"""
@@ -1099,6 +1197,24 @@ class MainWindow(Adw.ApplicationWindow):
             toast.set_timeout(3)
             self.toast_overlay.add_toast(toast)
             return
+        
+        # Safety check: ensure clean state before starting
+        if self.streamer is not None:
+            print("Warning: Streamer already exists, cleaning up first...")
+            try:
+                self.streamer.stop()
+            except Exception:
+                pass
+            self.streamer = None
+        
+        # Reset portal singleton to ensure fresh capture session
+        try:
+            from portal_screencast import reset_portal
+            reset_portal()
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"Warning: Could not reset portal: {e}")
             
         self.stream_state = StreamState.STARTING
         self.start_time = datetime.now()
@@ -1333,18 +1449,42 @@ class MainWindow(Adw.ApplicationWindow):
         self.toast_overlay.add_toast(toast)
         
     def stop_streaming(self):
-        """Stop the streaming service"""
-        # Stop WebRTC streamer
+        """Stop the streaming service and cleanup all resources"""
+        print("Stopping streaming service...")
+        
+        # Stop WebRTC streamer (this will also stop portal capture)
         if self.streamer:
-            self.streamer.stop()
-            self.streamer = None
-            
+            try:
+                self.streamer.stop()
+            except Exception as e:
+                print(f"Warning: Error stopping streamer: {e}")
+            finally:
+                self.streamer = None
+        
+        # Reset portal singleton if available (ensures fresh state for next start)
+        try:
+            from portal_screencast import reset_portal
+            reset_portal()
+        except ImportError:
+            pass
+        except Exception as e:
+            print(f"Warning: Error resetting portal: {e}")
+        
+        # Reset state
         self.stream_state = StreamState.STOPPED
         self.start_time = None
         self.connected_clients.clear()
         
+        # Reset stats display
+        self.fps_stat.value_label.set_label("0")
+        self.bitrate_stat.value_label.set_label("0")
+        self.latency_stat.value_label.set_label("--")
+        self.clients_stat.value_label.set_label("0")
+        
         # Update UI
         self.update_status_ui()
+        
+        print("✓ Streaming stopped and resources cleaned up")
         
         # Show toast
         toast = Adw.Toast.new(_('streaming_stopped'))

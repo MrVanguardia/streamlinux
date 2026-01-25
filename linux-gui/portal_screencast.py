@@ -465,7 +465,10 @@ class PortalScreencast:
             return False
     
     def stop(self):
-        """Stop the screencast session"""
+        """Stop the screencast session and cleanup all resources"""
+        logger.debug("Stopping screencast session...")
+        
+        # Close the portal session
         if self.session_path and self._bus:
             try:
                 session_proxy = Gio.DBusProxy.new_sync(
@@ -478,13 +481,29 @@ class PortalScreencast:
                     None
                 )
                 session_proxy.call_sync('Close', None, Gio.DBusCallFlags.NONE, -1, None)
-                logger.info("Session closed")
+                logger.info("Portal session closed")
             except Exception as e:
                 logger.debug(f"Error closing session: {e}")
         
+        # Close PipeWire file descriptor if open
+        if self.pipewire_fd is not None and self.pipewire_fd >= 0:
+            try:
+                os.close(self.pipewire_fd)
+                logger.debug("PipeWire fd closed")
+            except Exception as e:
+                logger.debug(f"Error closing PipeWire fd: {e}")
+        
+        # Reset all state
         self.session_path = None
         self.pipewire_node_id = None
         self.pipewire_fd = None
+        self._portal = None
+        self._bus = None
+        self._error = None
+        self._response_data = None
+        self._done.clear()
+        
+        logger.debug("Screencast resources cleaned up")
     
     def get_gst_source(self) -> str:
         """Get GStreamer source element string for pipewiresrc"""
@@ -503,6 +522,17 @@ def get_portal() -> PortalScreencast:
     if _portal_instance is None:
         _portal_instance = PortalScreencast()
     return _portal_instance
+
+
+def reset_portal():
+    """Reset the portal singleton instance. Call this when stopping streaming to allow a fresh start."""
+    global _portal_instance
+    if _portal_instance is not None:
+        try:
+            _portal_instance.stop()
+        except Exception:
+            pass
+        _portal_instance = None
 
 
 def is_wayland() -> bool:

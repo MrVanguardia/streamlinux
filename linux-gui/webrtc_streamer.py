@@ -188,26 +188,55 @@ class WebRTCStreamer:
                 self.on_error(str(e))
 
     def stop(self):
-        """Stop streaming"""
+        """Stop streaming and cleanup all resources"""
         logger.info("Stopping streamer...")
         
+        # Remove stats timer first
         if self.stats_timer_id:
             GLib.source_remove(self.stats_timer_id)
             self.stats_timer_id = None
-            
+        
+        # Stop GStreamer pipeline
         if self.pipeline:
+            logger.debug("Stopping GStreamer pipeline...")
             self.pipeline.set_state(Gst.State.NULL)
+            # Wait for state change to complete
+            self.pipeline.get_state(Gst.CLOCK_TIME_NONE)
             self.pipeline = None
             self.webrtc = None
-            
+        
+        # Stop Wayland portal capture
+        if self._portal:
+            logger.debug("Stopping portal screencast...")
+            try:
+                self._portal.stop()
+            except Exception as e:
+                logger.debug(f"Error stopping portal: {e}")
+            self._portal = None
+        self._pipewire_node_id = None
+        
+        # Close WebSocket connection
         if self.signaling_ws:
-            self.signaling_ws.close()
+            logger.debug("Closing WebSocket connection...")
+            try:
+                self.signaling_ws.close()
+            except Exception as e:
+                logger.debug(f"Error closing WebSocket: {e}")
             self.signaling_ws = None
         
-        # Reset connection state
+        # Wait for WebSocket thread to finish
+        if self.ws_thread and self.ws_thread.is_alive():
+            logger.debug("Waiting for WebSocket thread to finish...")
+            self.ws_thread.join(timeout=2.0)
+        self.ws_thread = None
+        
+        # Reset all connection and identity state
         self._active_peer_id = None
         self._ice_connected = False
-            
+        self.peer_id = None
+        self.my_id = None
+        
+        logger.info("Streamer stopped and cleaned up")
         self._set_state(StreamerState.STOPPED)
 
     def _on_ws_open(self, ws):

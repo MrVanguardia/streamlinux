@@ -6,6 +6,24 @@ StreamLinux permite transmitir la pantalla y el audio de un sistema Linux a disp
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Android-green.svg)
+![Version](https://img.shields.io/badge/version-1.1.1-orange.svg)
+
+## 🤔 ¿Por qué 3 Lenguajes Diferentes?
+
+Una pregunta frecuente es por qué el proyecto usa **Python**, **Kotlin** y **Go**. La respuesta es simple: **cada lenguaje es el mejor para su tarea específica**.
+
+| Componente | Lenguaje | ¿Por qué? |
+|------------|----------|-----------|
+| **Linux GUI** | Python + GTK4 | Integración nativa con el escritorio Linux (GNOME/GTK), acceso directo a GStreamer via GObject, desarrollo rápido de UI con libadwaita, y compatibilidad perfecta con xdg-desktop-portal para Wayland |
+| **Android Client** | Kotlin | Lenguaje oficial de Android, acceso nativo a MediaCodec para decodificación por hardware, Jetpack Compose para UI moderna, y mejor rendimiento que alternativas cross-platform |
+| **Signaling Server** | Go | Perfecto para servidores WebSocket concurrentes, compilación a binario único sin dependencias, goroutines para manejar miles de conexiones, y despliegue trivial |
+
+### Alternativas Consideradas y Descartadas:
+
+- **Electron/React Native**: Demasiado overhead para streaming de baja latencia
+- **Flutter**: Sin acceso nativo a PipeWire/GStreamer en Linux
+- **Rust**: Excelente pero ecosistema GTK4 menos maduro
+- **Node.js para servidor**: Mayor consumo de memoria, menos eficiente para WebSockets masivos
 
 ## 🎯 Características
 

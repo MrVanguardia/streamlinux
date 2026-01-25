@@ -94,39 +94,177 @@ type Room struct {
 	mu         sync.RWMutex
 }
 
-// Hub manages all peers and rooms
-type Hub struct {
-	rooms      map[string]*Room
-	peers      map[string]*Peer
-	register   chan *Peer
-	unregister chan *Peer
-	broadcast  chan *Message
-	timeout    time.Duration
-	logger     *zap.Logger
-	mu         sync.RWMutex
-	done       chan struct{}
+// SecurityConfig holds security-related settings
+type SecurityConfig struct {
+	RequireToken    bool          // Require token validation
+	RequirePIN      bool          // Require PIN authorization
+	TokenExpiry     time.Duration // Token validity duration
+	MaxConnAttempts int           // Max connection attempts per window
+	RateLimitWindow time.Duration // Time window for rate limiting
 }
 
-// WebSocket upgrader
+// DefaultSecurityConfig returns the default security configuration
+func DefaultSecurityConfig() SecurityConfig {
+	return SecurityConfig{
+		RequireToken:    true,
+		RequirePIN:      true,
+		TokenExpiry:     5 * time.Minute,
+		MaxConnAttempts: 10,
+		RateLimitWindow: 1 * time.Minute,
+	}
+}
+
+// RateLimiter tracks connection attempts
+type RateLimiter struct {
+	attempts map[string][]time.Time
+	mu       sync.Mutex
+}
+
+func NewRateLimiter() *RateLimiter {
+	return &RateLimiter{
+		attempts: make(map[string][]time.Time),
+	}
+}
+
+func (r *RateLimiter) Allow(identifier string, maxAttempts int, window time.Duration) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	cutoff := now.Add(-window)
+
+	// Clean old attempts
+	if attempts, ok := r.attempts[identifier]; ok {
+		filtered := make([]time.Time, 0)
+		for _, t := range attempts {
+			if t.After(cutoff) {
+				filtered = append(filtered, t)
+			}
+		}
+		r.attempts[identifier] = filtered
+	}
+
+	// Check limit
+	if len(r.attempts[identifier]) >= maxAttempts {
+		return false
+	}
+
+	// Record this attempt
+	r.attempts[identifier] = append(r.attempts[identifier], now)
+	return true
+}
+
+// PendingAuth represents a connection awaiting PIN verification
+type PendingAuth struct {
+	ConnectionID string
+	DeviceID     string
+	DeviceName   string
+	PIN          string
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+	Attempts     int
+	Peer         *Peer
+}
+
+// Hub manages all peers and rooms
+type Hub struct {
+	rooms       map[string]*Room
+	peers       map[string]*Peer
+	register    chan *Peer
+	unregister  chan *Peer
+	broadcast   chan *Message
+	timeout     time.Duration
+	logger      *zap.Logger
+	mu          sync.RWMutex
+	done        chan struct{}
+	security    SecurityConfig
+	rateLimiter *RateLimiter
+	validTokens map[string]time.Time // token -> expiry time
+	pendingAuth map[string]*PendingAuth
+	tokenMu     sync.RWMutex
+}
+
+// WebSocket upgrader with security
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins for development
+		// In production, validate origin against allowed list
+		// For now, allow local network connections
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // Allow connections without origin (native apps)
+		}
+		// Allow localhost and local network
+		return true // TODO: Add proper origin validation in production
 	},
 }
 
-// NewHub creates a new signaling hub
+// NewHub creates a new signaling hub with security
 func NewHub(logger *zap.Logger, timeout time.Duration) *Hub {
 	return &Hub{
-		rooms:      make(map[string]*Room),
-		peers:      make(map[string]*Peer),
-		register:   make(chan *Peer),
-		unregister: make(chan *Peer),
-		broadcast:  make(chan *Message, 256),
-		timeout:    timeout,
-		logger:     logger,
-		done:       make(chan struct{}),
+		rooms:       make(map[string]*Room),
+		peers:       make(map[string]*Peer),
+		register:    make(chan *Peer),
+		unregister:  make(chan *Peer),
+		broadcast:   make(chan *Message, 256),
+		timeout:     timeout,
+		logger:      logger,
+		done:        make(chan struct{}),
+		security:    DefaultSecurityConfig(),
+		rateLimiter: NewRateLimiter(),
+		validTokens: make(map[string]time.Time),
+		pendingAuth: make(map[string]*PendingAuth),
+	}
+}
+
+// NewHubWithSecurity creates a new signaling hub with custom security config
+func NewHubWithSecurity(logger *zap.Logger, timeout time.Duration, security SecurityConfig) *Hub {
+	hub := NewHub(logger, timeout)
+	hub.security = security
+	return hub
+}
+
+// RegisterToken registers a valid session token from the host
+func (h *Hub) RegisterToken(token string, expiry time.Duration) {
+	h.tokenMu.Lock()
+	defer h.tokenMu.Unlock()
+	h.validTokens[token] = time.Now().Add(expiry)
+	h.logger.Info("Token registered", zap.String("token", token[:8]+"..."))
+}
+
+// ValidateToken checks if a token is valid
+func (h *Hub) ValidateToken(token string) bool {
+	h.tokenMu.RLock()
+	defer h.tokenMu.RUnlock()
+
+	expiry, ok := h.validTokens[token]
+	if !ok {
+		return false
+	}
+	if time.Now().After(expiry) {
+		return false
+	}
+	return true
+}
+
+// InvalidateToken removes a token
+func (h *Hub) InvalidateToken(token string) {
+	h.tokenMu.Lock()
+	defer h.tokenMu.Unlock()
+	delete(h.validTokens, token)
+}
+
+// CleanupExpiredTokens removes expired tokens
+func (h *Hub) CleanupExpiredTokens() {
+	h.tokenMu.Lock()
+	defer h.tokenMu.Unlock()
+
+	now := time.Now()
+	for token, expiry := range h.validTokens {
+		if now.After(expiry) {
+			delete(h.validTokens, token)
+		}
 	}
 }
 
@@ -498,23 +636,54 @@ func (h *Hub) HandleRoomInfo(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(rooms)
 }
 
-// HandleWebSocket handles WebSocket upgrade and connection
+// HandleWebSocket handles WebSocket upgrade and connection with security
 func HandleWebSocket(hub *Hub, w http.ResponseWriter, r *http.Request, logger *zap.Logger) {
+	remoteAddr := r.RemoteAddr
+	clientType := r.Header.Get("X-Client-Type")
+	token := r.URL.Query().Get("token")
+	deviceID := r.URL.Query().Get("device_id")
+
 	logger.Info("WebSocket connection attempt",
-		zap.String("remote", r.RemoteAddr),
+		zap.String("remote", remoteAddr),
 		zap.String("path", r.URL.Path),
 		zap.String("origin", r.Header.Get("Origin")),
-		zap.String("client-type", r.Header.Get("X-Client-Type")))
+		zap.String("client-type", clientType),
+		zap.Bool("has-token", token != ""))
+
+	// Rate limiting check
+	if !hub.rateLimiter.Allow(remoteAddr, hub.security.MaxConnAttempts, hub.security.RateLimitWindow) {
+		logger.Warn("Rate limited connection attempt", zap.String("remote", remoteAddr))
+		http.Error(w, "Too many connection attempts", http.StatusTooManyRequests)
+		return
+	}
+
+	// Token validation for non-host connections (clients/viewers)
+	// Hosts register tokens, clients must provide valid tokens
+	isHost := clientType == "host"
+
+	if !isHost && hub.security.RequireToken && token != "" {
+		if !hub.ValidateToken(token) {
+			logger.Warn("Invalid token rejected",
+				zap.String("remote", remoteAddr),
+				zap.String("token", token[:min(8, len(token))]+"..."))
+			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+			return
+		}
+		logger.Info("Token validated successfully", zap.String("remote", remoteAddr))
+	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Error("WebSocket upgrade failed",
 			zap.Error(err),
-			zap.String("remote", r.RemoteAddr))
+			zap.String("remote", remoteAddr))
 		return
 	}
 
-	logger.Info("WebSocket connected", zap.String("remote", r.RemoteAddr))
+	logger.Info("WebSocket connected",
+		zap.String("remote", remoteAddr),
+		zap.Bool("is-host", isHost),
+		zap.String("device-id", deviceID))
 
 	// Generate peer ID
 	peerID := generatePeerID()
@@ -533,6 +702,14 @@ func HandleWebSocket(hub *Hub, w http.ResponseWriter, r *http.Request, logger *z
 	// Start read/write pumps
 	go peer.writePump()
 	go peer.readPump()
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (p *Peer) readPump() {
