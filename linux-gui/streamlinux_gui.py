@@ -1432,15 +1432,19 @@ class MainWindow(Adw.ApplicationWindow):
             transient_for=self,
             application_name="StreamLinux",
             application_icon="video-display",
-            developer_name="StreamLinux Team",
-            version="1.0.0",
-            copyright="© 2026 StreamLinux",
+            developer_name="Vanguardia Studio",
+            version="1.0.0 (Experimental)",
+            copyright="© 2026 Vanguardia Studio",
             license_type=Gtk.License.MIT_X11,
-            website="https://github.com/streamlinux",
-            issue_url="https://github.com/streamlinux/issues",
-            comments="Transmite tu pantalla de Linux a dispositivos Android con baja latencia usando WebRTC."
+            website="https://vanguardiastudio.us/",
+            issue_url="https://github.com/MrVanguardia/streamlinux/issues",
+            comments="⚠️ VERSIÓN EXPERIMENTAL ⚠️\n\nTransmite tu pantalla de Linux a dispositivos Android con baja latencia usando WebRTC.\n\nEste software está en desarrollo activo. Pueden existir errores o funcionalidades incompletas."
         )
-        about.add_credit_section("Tecnologías", ["GTK4", "libadwaita", "WebRTC", "FFmpeg", "PipeWire"])
+        about.add_credit_section("Tecnologías", ["GTK4", "libadwaita", "WebRTC", "GStreamer", "PipeWire"])
+        about.add_credit_section("Desarrollador", ["MrVanguardia - Vanguardia Studio"])
+        about.add_link("🌐 Página Web", "https://vanguardiastudio.us/")
+        about.add_link("💖 Donar con PayPal", "https://www.paypal.com/donate/?hosted_button_id=YOUR_PAYPAL_BUTTON_ID")
+        about.add_link("⭐ GitHub", "https://github.com/MrVanguardia/streamlinux")
         about.present()
 
 
