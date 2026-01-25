@@ -6,8 +6,31 @@ Uses xdg-desktop-portal for Wayland, ximagesrc for X11
 
 import gi
 gi.require_version('Gst', '1.0')
-gi.require_version('GstWebRTC', '1.0')
-gi.require_version('GstSdp', '1.0')
+
+# Check for GstWebRTC before importing
+try:
+    gi.require_version('GstWebRTC', '1.0')
+    gi.require_version('GstSdp', '1.0')
+except ValueError as e:
+    import sys
+    print("=" * 60)
+    print("ERROR: GStreamer WebRTC support not found!")
+    print("=" * 60)
+    print()
+    print("This is required for streaming to work.")
+    print()
+    print("To fix on Ubuntu/Debian/Mint:")
+    print("  sudo apt install gir1.2-gst-plugins-bad-1.0")
+    print("  sudo apt install gstreamer1.0-plugins-bad gstreamer1.0-nice")
+    print()
+    print("To fix on Fedora:")
+    print("  sudo dnf install gstreamer1-plugins-bad-free")
+    print()
+    print("To fix on Arch:")
+    print("  sudo pacman -S gst-plugins-bad")
+    print()
+    print("=" * 60)
+    raise ImportError(f"GstWebRTC not available: {e}")
 
 from gi.repository import Gst, GstWebRTC, GstSdp, GLib
 import json
@@ -314,46 +337,105 @@ class WebRTCStreamer:
         if audio_source == 'none':
             return None
         
+        # Check if PulseAudio/PipeWire is available
+        if not self._check_pulseaudio():
+            logger.warning("PulseAudio not available - audio disabled")
+            return None
+        
         if audio_source == 'system':
             # Capture system audio (what you hear) - use PulseAudio monitor
             monitor_source = self._get_default_monitor()
             if monitor_source:
                 logger.info(f"Using PulseAudio monitor: {monitor_source}")
-                return f'pulsesrc device="{monitor_source}"'
+                # Use buffer-time and latency-time for better sync
+                return f'pulsesrc device="{monitor_source}" buffer-time=20000 latency-time=10000'
             else:
-                logger.warning("Could not find default audio monitor")
-                return None
+                # Fallback: try default pulsesrc (PipeWire may handle this)
+                logger.warning("No monitor found - trying default audio source")
+                return 'pulsesrc buffer-time=20000 latency-time=10000'
                 
         elif audio_source == 'microphone':
             # Capture microphone input - default source
             logger.info("Using default microphone input")
-            return 'pulsesrc'
+            return 'pulsesrc buffer-time=20000 latency-time=10000'
                 
         elif audio_source == 'both':
             # For now, just use system audio (mixing would require audiomixer)
             logger.info("Both audio sources requested - using system audio")
             monitor_source = self._get_default_monitor()
             if monitor_source:
-                return f'pulsesrc device="{monitor_source}"'
-            return None
+                return f'pulsesrc device="{monitor_source}" buffer-time=20000 latency-time=10000'
+            return 'pulsesrc buffer-time=20000 latency-time=10000'
         
         return None
     
     def _get_default_monitor(self) -> Optional[str]:
         """Get the monitor source for the default audio sink"""
+        # Try multiple methods for different distros/setups
+        
+        # Method 1: pactl get-default-sink (newer pactl)
         try:
-            # Get default sink name
             result = subprocess.run(
                 ['pactl', 'get-default-sink'],
                 capture_output=True, text=True, timeout=2
             )
             if result.returncode == 0:
                 default_sink = result.stdout.strip()
-                monitor = f"{default_sink}.monitor"
-                logger.info(f"Default audio monitor: {monitor}")
-                return monitor
+                if default_sink:
+                    monitor = f"{default_sink}.monitor"
+                    logger.info(f"Default audio monitor (method 1): {monitor}")
+                    return monitor
         except Exception as e:
-            logger.error(f"Failed to get default monitor: {e}")
+            logger.debug(f"Method 1 failed: {e}")
+        
+        # Method 2: Parse pactl info (older systems)
+        try:
+            result = subprocess.run(
+                ['pactl', 'info'],
+                capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    if 'Default Sink:' in line:
+                        default_sink = line.split(':', 1)[1].strip()
+                        if default_sink:
+                            monitor = f"{default_sink}.monitor"
+                            logger.info(f"Default audio monitor (method 2): {monitor}")
+                            return monitor
+        except Exception as e:
+            logger.debug(f"Method 2 failed: {e}")
+        
+        # Method 3: List sources and find a monitor
+        try:
+            result = subprocess.run(
+                ['pactl', 'list', 'sources', 'short'],
+                capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0:
+                for line in result.stdout.splitlines():
+                    parts = line.split('\t')
+                    if len(parts) >= 2:
+                        source_name = parts[1]
+                        if '.monitor' in source_name:
+                            logger.info(f"Default audio monitor (method 3): {source_name}")
+                            return source_name
+        except Exception as e:
+            logger.debug(f"Method 3 failed: {e}")
+        
+        # Method 4: PipeWire - try to get default through pw-cli
+        try:
+            result = subprocess.run(
+                ['pw-cli', 'info', 'default.audio.sink'],
+                capture_output=True, text=True, timeout=2
+            )
+            if result.returncode == 0:
+                # PipeWire uses node names - just use pulsesrc without device
+                logger.info("PipeWire detected - using default audio source")
+                return None  # Will use default pulsesrc
+        except Exception as e:
+            logger.debug(f"PipeWire method failed: {e}")
+        
+        logger.warning("Could not find default audio monitor - audio may not work")
         return None
     
     def _build_audio_source_for_type(self, source_type: str) -> Optional[str]:
@@ -431,22 +513,24 @@ class WebRTCStreamer:
             if self.config.audio and self.config.audio_source != 'none':
                 audio_src = self._build_audio_source()
                 if audio_src:
+                    # Use error-tolerant audio pipeline
                     audio_pipeline = f'''
                 {audio_src}
                 ! audioconvert
                 ! audioresample
                 ! audio/x-raw,rate=48000,channels=2
-                ! queue max-size-buffers=1 leaky=downstream
+                ! queue max-size-buffers=2 leaky=downstream
                 ! opusenc bitrate={self.config.audio_bitrate * 1000} audio-type=generic
                 ! rtpopuspay pt=97
-                ! queue max-size-time=100000000
+                ! queue max-size-time=100000000 leaky=downstream
                 ! webrtc.
             '''
                     logger.info(f"Audio enabled: {self.config.audio_source}")
                 else:
-                    logger.warning("Audio source not available")
+                    logger.warning("Audio source not available - continuing without audio")
             
             # Pipeline with webrtcbin defined first, then linked
+            # Using leaky queues to prevent buffer overflows
             pipeline_str = f'''
                 webrtcbin name=webrtc bundle-policy=max-bundle stun-server={self.config.stun_server}
                 {capture_src}
@@ -454,9 +538,9 @@ class WebRTCStreamer:
                 ! videoscale
                 ! videorate
                 ! video/x-raw,width={self.config.width},height={self.config.height},framerate={self.config.fps}/1
-                ! queue max-size-buffers=1 leaky=downstream
+                ! queue max-size-buffers=2 leaky=downstream
                 ! {video_enc}
-                ! queue max-size-time=100000000
+                ! queue max-size-time=100000000 leaky=downstream
                 ! webrtc.
                 {audio_pipeline}
             '''
@@ -464,7 +548,27 @@ class WebRTCStreamer:
             logger.info("Creating pipeline...")
             logger.debug(f"Pipeline: {pipeline_str}")
             
-            self.pipeline = Gst.parse_launch(pipeline_str)
+            try:
+                self.pipeline = Gst.parse_launch(pipeline_str)
+            except GLib.Error as e:
+                # If audio fails, try without audio
+                if audio_pipeline and 'pulsesrc' in str(e):
+                    logger.warning(f"Audio pipeline failed: {e}, trying without audio")
+                    pipeline_str = f'''
+                        webrtcbin name=webrtc bundle-policy=max-bundle stun-server={self.config.stun_server}
+                        {capture_src}
+                        ! videoconvert
+                        ! videoscale
+                        ! videorate
+                        ! video/x-raw,width={self.config.width},height={self.config.height},framerate={self.config.fps}/1
+                        ! queue max-size-buffers=2 leaky=downstream
+                        ! {video_enc}
+                        ! queue max-size-time=100000000 leaky=downstream
+                        ! webrtc.
+                    '''
+                    self.pipeline = Gst.parse_launch(pipeline_str)
+                else:
+                    raise
             
             # Get webrtcbin element
             self.webrtc = self.pipeline.get_by_name('webrtc')

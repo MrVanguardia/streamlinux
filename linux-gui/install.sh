@@ -81,7 +81,11 @@ install_dependencies() {
             python3 python3-pip python3-gobject gtk4 libadwaita \
             gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free \
             gstreamer1-plugin-libav pipewire pipewire-gstreamer \
+            gstreamer1-plugins-bad-free-extras \
             python3-pillow python3-cairo zenity 2>/dev/null || true
+        # WebRTC and audio dependencies
+        dnf install -y libnice gstreamer1-plugins-bad-freeworld 2>/dev/null || true
+        dnf install -y pulseaudio-utils 2>/dev/null || true
         dnf install -y python3-qrcode python3-websocket-client 2>/dev/null || true
         
     elif command -v apt-get &>/dev/null; then
@@ -103,12 +107,24 @@ install_dependencies() {
         # GStreamer - including WebRTC support
         apt-get install -y \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-            gstreamer1.0-plugins-bad gstreamer1.0-libav \
+            gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly \
+            gstreamer1.0-libav gstreamer1.0-tools \
             gstreamer1.0-pipewire gstreamer1.0-nice \
-            gir1.2-gst-plugins-bad-1.0 gir1.2-nice-0.1 2>/dev/null || true
+            gstreamer1.0-pulseaudio 2>/dev/null || true
         
-        # GStreamer introspection for WebRTC (different package names)
+        # GStreamer introspection bindings for WebRTC (CRITICAL)
+        apt-get install -y \
+            gir1.2-gst-plugins-bad-1.0 \
+            gir1.2-gstreamer-1.0 \
+            gir1.2-gst-plugins-base-1.0 \
+            gir1.2-nice-0.1 \
+            libnice10 2>/dev/null || true
+        
+        # Additional dev packages that may contain typelibs
         apt-get install -y libgstreamer-plugins-bad1.0-dev 2>/dev/null || true
+        
+        # PulseAudio tools for audio capture
+        apt-get install -y pulseaudio-utils 2>/dev/null || true
         
         # Python packages - try apt first, then pip
         apt-get install -y python3-pil python3-pillow 2>/dev/null || true
@@ -122,8 +138,9 @@ install_dependencies() {
         print_status "Installing dependencies (Arch)..."
         pacman -Sy --noconfirm \
             python python-pip python-gobject gtk4 libadwaita \
-            gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav \
+            gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav \
             pipewire gst-plugin-pipewire \
+            libnice pulseaudio \
             python-pillow python-cairo zenity 2>/dev/null || true
         pacman -Sy --noconfirm python-qrcode python-websocket-client 2>/dev/null || true
         
@@ -132,7 +149,9 @@ install_dependencies() {
         zypper install -y \
             python3 python3-pip python3-gobject gtk4 libadwaita \
             gstreamer-plugins-base gstreamer-plugins-good gstreamer-plugins-bad \
-            gstreamer-plugins-libav pipewire \
+            gstreamer-plugins-ugly gstreamer-plugins-libav pipewire \
+            libnice typelib-1_0-Nice-0_1 typelib-1_0-GstWebRTC-1_0 \
+            pulseaudio-utils \
             python3-Pillow python3-cairo zenity 2>/dev/null || true
         zypper install -y python3-qrcode python3-websocket-client 2>/dev/null || true
         
@@ -170,12 +189,35 @@ verify_dependencies() {
         all_ok=false
     fi
     
-    # Check GStreamer
+    # Check GStreamer base
     if python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst" 2>/dev/null; then
         echo -e "  ${GREEN}✓${NC} GStreamer"
     else
         echo -e "  ${RED}✗${NC} GStreamer - Install: gstreamer1.0-plugins-base"
         all_ok=false
+    fi
+    
+    # Check GStreamer WebRTC (CRITICAL for streaming)
+    if python3 -c "import gi; gi.require_version('GstWebRTC', '1.0'); from gi.repository import GstWebRTC" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} GStreamer WebRTC"
+    else
+        echo -e "  ${RED}✗${NC} GStreamer WebRTC - Install: gir1.2-gst-plugins-bad-1.0 (apt)"
+        all_ok=false
+    fi
+    
+    # Check GStreamer SDP (needed for WebRTC)
+    if python3 -c "import gi; gi.require_version('GstSdp', '1.0'); from gi.repository import GstSdp" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} GStreamer SDP"
+    else
+        echo -e "  ${RED}✗${NC} GStreamer SDP - Install: gir1.2-gst-plugins-base-1.0 (apt)"
+        all_ok=false
+    fi
+    
+    # Check PulseAudio tools (for audio capture)
+    if command -v pactl &>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} PulseAudio tools"
+    else
+        echo -e "  ${YELLOW}!${NC} PulseAudio tools - Install: pulseaudio-utils (audio may not work)"
     fi
     
     # Check PIL/Pillow
@@ -300,6 +342,18 @@ except:
     missing.append("GStreamer (gstreamer1.0-plugins-base)")
 
 try:
+    gi.require_version('GstWebRTC', '1.0')
+    from gi.repository import GstWebRTC
+except:
+    missing.append("GstWebRTC (gir1.2-gst-plugins-bad-1.0)")
+
+try:
+    gi.require_version('GstSdp', '1.0')
+    from gi.repository import GstSdp
+except:
+    missing.append("GstSdp (gir1.2-gst-plugins-base-1.0)")
+
+try:
     from PIL import Image
 except ImportError:
     missing.append("Pillow")
@@ -330,14 +384,14 @@ if [ $dep_exit -ne 0 ]; then
     missing_list=$(echo "$dep_result" | grep "^MISSING:" | sed 's/MISSING://')
     
     error_msg="StreamLinux cannot start.\n\nMissing dependencies:\n$missing_list\n\n"
-    error_msg+="To fix, run:\n"
-    error_msg+="  pip3 install --user pillow qrcode websocket-client\n\n"
-    error_msg+="For GTK4/libadwaita on Ubuntu/Mint:\n"
-    error_msg+="  sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1"
+    error_msg+="To fix GStreamer WebRTC on Ubuntu/Mint:\n"
+    error_msg+="  sudo apt install gir1.2-gst-plugins-bad-1.0 gir1.2-nice-0.1\n\n"
+    error_msg+="For Python packages:\n"
+    error_msg+="  pip3 install --user pillow qrcode websocket-client"
     
     # Show error dialog
     if command -v zenity &>/dev/null; then
-        zenity --error --title="StreamLinux - Error" --text="$error_msg" --width=400 2>/dev/null
+        zenity --error --title="StreamLinux - Error" --text="$error_msg" --width=500 2>/dev/null
     elif command -v kdialog &>/dev/null; then
         kdialog --error "$error_msg" 2>/dev/null
     elif command -v notify-send &>/dev/null; then
@@ -352,14 +406,18 @@ if [ $dep_exit -ne 0 ]; then
     echo ""
     echo "Missing: $missing_list"
     echo ""
+    echo "To fix GStreamer WebRTC on Ubuntu/Mint/Debian:"
+    echo "  sudo apt install gir1.2-gst-plugins-bad-1.0 gir1.2-gst-plugins-base-1.0"
+    echo "  sudo apt install gstreamer1.0-plugins-bad gstreamer1.0-nice"
+    echo ""
     echo "To fix Python packages:"
     echo "  pip3 install --user pillow qrcode websocket-client"
     echo ""
-    echo "For GTK4/libadwaita on Ubuntu/Mint:"
-    echo "  sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1"
+    echo "For Fedora/RHEL:"
+    echo "  sudo dnf install gstreamer1-plugins-bad-free python3-gobject gtk4 libadwaita"
     echo ""
-    echo "For GTK4/libadwaita on Fedora:"
-    echo "  sudo dnf install python3-gobject gtk4 libadwaita"
+    echo "For Arch Linux:"
+    echo "  sudo pacman -S gst-plugins-bad python-gobject gtk4 libadwaita"
     echo ""
     exit 1
 fi
