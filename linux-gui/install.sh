@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# StreamLinux Universal Installer v1.0.1
+# StreamLinux Universal Installer v1.1.1
 # Works on Fedora, Ubuntu, Debian, Linux Mint, Arch, openSUSE, and other Linux distributions
 
 # Don't exit on error - we handle errors ourselves
@@ -14,7 +14,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="1.0.1"
+VERSION="1.1.1"
 
 print_banner() {
     echo -e "${BLUE}"
@@ -273,6 +273,8 @@ install_streamlinux() {
     # Install optional modules if present
     [ -f "$SCRIPT_DIR/portal_screencast.py" ] && cp "$SCRIPT_DIR/portal_screencast.py" /usr/local/lib/streamlinux/
     [ -f "$SCRIPT_DIR/usb_manager.py" ] && cp "$SCRIPT_DIR/usb_manager.py" /usr/local/lib/streamlinux/
+    [ -f "$SCRIPT_DIR/i18n.py" ] && cp "$SCRIPT_DIR/i18n.py" /usr/local/lib/streamlinux/
+    [ -f "$SCRIPT_DIR/security.py" ] && cp "$SCRIPT_DIR/security.py" /usr/local/lib/streamlinux/
     
     # Create __init__.py
     touch /usr/local/lib/streamlinux/__init__.py
