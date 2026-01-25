@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # StreamLinux Universal Installer
 # Works on Fedora, Ubuntu, Debian, Arch, openSUSE, and other Linux distributions
 
