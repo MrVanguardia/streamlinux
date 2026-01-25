@@ -348,7 +348,7 @@ Result<EncodedVideoFrame> FFmpegVideoEncoder::encode(const VideoFrame& frame) {
     
     auto convert_result = convert_frame(frame, m_frame);
     if (!convert_result) {
-        return convert_result.error();
+        return std::unexpected(convert_result.error());
     }
     
     m_frame->pts = m_pts_counter++;

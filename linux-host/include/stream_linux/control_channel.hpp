@@ -31,6 +31,7 @@ enum class QualityPreset {
 
 /**
  * @brief Stream parameters that can be changed at runtime
+ * @note Trivially copyable value type - pass by value is efficient
  */
 struct StreamParameters {
     uint32_t width = 0;      // 0 = no change
@@ -39,6 +40,10 @@ struct StreamParameters {
     uint32_t fps = 0;
     int32_t monitor_id = -1;
     QualityPreset quality = QualityPreset::Auto;
+    
+    constexpr StreamParameters() noexcept = default;
+    constexpr bool has_resolution() const noexcept { return width > 0 && height > 0; }
+    constexpr bool has_bitrate() const noexcept { return bitrate > 0; }
 };
 
 /**
@@ -71,8 +76,9 @@ public:
     
     /**
      * @brief Set control event handler
+     * @param handler Raw pointer to handler (not owned, caller manages lifetime)
      */
-    void set_handler(IControlHandler* handler);
+    void set_handler(IControlHandler* handler) noexcept;
     
     /**
      * @brief Process incoming control message

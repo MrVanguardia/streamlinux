@@ -23,6 +23,7 @@
  */
 
 #include "common.hpp"
+#include "control_channel.hpp"
 #include <string>
 #include <optional>
 #include <map>

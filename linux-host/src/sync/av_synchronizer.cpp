@@ -44,7 +44,7 @@ void AVSynchronizer::reset() {
     m_stats = SyncStats{};
 }
 
-void AVSynchronizer::push_video(EncodedVideoFrame frame) {
+void AVSynchronizer::push_video(EncodedVideoFrame frame) noexcept {
     std::lock_guard<std::mutex> lock(m_buffer_mutex);
     
     // Track drift
@@ -67,7 +67,7 @@ void AVSynchronizer::push_video(EncodedVideoFrame frame) {
     m_buffer_cv.notify_one();
 }
 
-void AVSynchronizer::push_audio(EncodedAudioFrame frame) {
+void AVSynchronizer::push_audio(EncodedAudioFrame frame) noexcept {
     std::lock_guard<std::mutex> lock(m_buffer_mutex);
     
     // Track drift

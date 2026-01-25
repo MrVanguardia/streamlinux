@@ -5,7 +5,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-VERSION="1.0.0"
+VERSION="1.1.1"
 BUILD_DIR="$PROJECT_ROOT/build"
 
 # Colors for output
@@ -35,9 +35,13 @@ build_tarball() {
     TARBALL_DIR="$BUILD_DIR/streamlinux-$VERSION"
     mkdir -p "$TARBALL_DIR"
     
-    # Copy files
+    # Copy main Python files
     cp "$PROJECT_ROOT/streamlinux_gui.py" "$TARBALL_DIR/"
     cp "$PROJECT_ROOT/webrtc_streamer.py" "$TARBALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/portal_screencast.py" "$TARBALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/security.py" "$TARBALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/i18n.py" "$TARBALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT/usb_manager.py" "$TARBALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/requirements.txt" "$TARBALL_DIR/"
     cp -r "$PROJECT_ROOT/data" "$TARBALL_DIR/"
     

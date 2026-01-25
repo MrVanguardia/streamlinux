@@ -20,7 +20,7 @@ Result<void> ControlChannel::initialize(IWebRTCTransport* transport) {
     return {};
 }
 
-void ControlChannel::set_handler(IControlHandler* handler) {
+void ControlChannel::set_handler(IControlHandler* handler) noexcept {
     m_handler = handler;
 }
 

@@ -15,6 +15,7 @@
 #include <mutex>
 #include <atomic>
 #include <deque>
+#include <condition_variable>
 
 namespace stream_linux {
 
@@ -91,15 +92,15 @@ public:
     
     /**
      * @brief Push encoded video frame
-     * @param frame Encoded video frame with PTS
+     * @param frame Encoded video frame with PTS (sink parameter - will be moved)
      */
-    void push_video(EncodedVideoFrame frame);
+    void push_video(EncodedVideoFrame frame) noexcept;
     
     /**
-     * @brief Push encoded audio frame
-     * @param frame Encoded audio frame with PTS
+     * @brief Push encoded audio frame  
+     * @param frame Encoded audio frame with PTS (sink parameter - will be moved)
      */
-    void push_audio(EncodedAudioFrame frame);
+    void push_audio(EncodedAudioFrame frame) noexcept;
     
     /**
      * @brief Get next synchronized frame pair

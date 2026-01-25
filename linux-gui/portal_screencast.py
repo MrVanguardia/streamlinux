@@ -61,7 +61,7 @@ class PortalScreencast:
             return name[1:].replace('.', '_')
         return f"pid{os.getpid()}"
     
-    def start_capture(self, source_type=None, cursor_mode=None) -> bool:
+    def start_capture(self, source_type=None, cursor_mode=None, max_retries=2) -> bool:
         """
         Start screen capture. Shows portal dialog for user to select what to share.
         Returns True if successful, False otherwise.
@@ -74,6 +74,53 @@ class PortalScreencast:
         
         self._error = None
         
+        # Clean up any previous session first
+        self._cleanup_previous_session()
+        
+        for attempt in range(max_retries + 1):
+            if attempt > 0:
+                logger.info(f"Retry attempt {attempt}/{max_retries}...")
+                import time
+                time.sleep(0.5)  # Small delay before retry
+            
+            success = self._try_start_capture()
+            if success:
+                return True
+            
+            # If user cancelled, don't retry
+            if self._error and "cancelled" in self._error.lower():
+                break
+                
+            # Clean up for retry
+            self._cleanup_previous_session()
+        
+        return False
+    
+    def _cleanup_previous_session(self):
+        """Clean up any leftover session state"""
+        if self.session_path and self._bus:
+            try:
+                session_proxy = Gio.DBusProxy.new_sync(
+                    self._bus,
+                    Gio.DBusProxyFlags.NONE,
+                    None,
+                    self.PORTAL_BUS,
+                    self.session_path,
+                    'org.freedesktop.portal.Session',
+                    None
+                )
+                session_proxy.call_sync('Close', None, Gio.DBusCallFlags.NONE, 1000, None)
+            except Exception:
+                pass
+        
+        self.session_path = None
+        self.pipewire_node_id = None
+        self._error = None
+        self._response_data = None
+        self._done.clear()
+    
+    def _try_start_capture(self) -> bool:
+        """Single attempt to start capture"""
         try:
             # Connect to session bus
             self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
@@ -100,6 +147,10 @@ class PortalScreencast:
             if not self._select_sources():
                 logger.error(f"SelectSources failed: {self._error}")
                 return False
+            
+            # Small delay to ensure UI is ready before Start
+            import time
+            time.sleep(0.3)
             
             # Step 3: Start the stream
             logger.info("Starting PipeWire stream...")
@@ -460,6 +511,13 @@ class PortalScreencast:
             else:
                 self._error = "No streams returned from portal"
                 return False
+        elif response_code == 1:
+            # Code 1 usually means user interaction issue or dialog didn't show
+            self._error = "Portal dialog failed to show or was dismissed - try again"
+            return False
+        elif response_code == 2:
+            self._error = "User cancelled the stream"
+            return False
         else:
             self._error = f"Start returned code {response_code}"
             return False
@@ -524,7 +582,7 @@ def get_portal() -> PortalScreencast:
     return _portal_instance
 
 
-def reset_portal():
+def reset_portal(restart_service=False):
     """Reset the portal singleton instance. Call this when stopping streaming to allow a fresh start."""
     global _portal_instance
     if _portal_instance is not None:
@@ -533,6 +591,17 @@ def reset_portal():
         except Exception:
             pass
         _portal_instance = None
+    
+    # Optionally restart the portal service if having persistent issues
+    if restart_service:
+        try:
+            import subprocess
+            subprocess.run(['systemctl', '--user', 'restart', 'xdg-desktop-portal'], 
+                          capture_output=True, timeout=5)
+            import time
+            time.sleep(1)
+        except Exception:
+            pass
 
 
 def is_wayland() -> bool:

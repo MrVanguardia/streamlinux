@@ -6,6 +6,20 @@ Redesigned with better organization and sections.
 Now with real WebRTC streaming and persistent settings!
 """
 
+import os
+import sys
+
+# Add StreamLinux library path for installed packages
+# This allows imports from /usr/share/streamlinux/ when installed via RPM
+_streamlinux_lib_paths = [
+    '/usr/share/streamlinux',
+    '/usr/local/share/streamlinux',
+    os.path.dirname(os.path.abspath(__file__))  # For local development
+]
+for _path in _streamlinux_lib_paths:
+    if os.path.isdir(_path) and _path not in sys.path:
+        sys.path.insert(0, _path)
+
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
@@ -15,8 +29,6 @@ import socket
 import json
 import threading
 import subprocess
-import os
-import sys
 import time
 import uuid
 import hashlib

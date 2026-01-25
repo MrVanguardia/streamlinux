@@ -90,12 +90,16 @@ enum class ControlMessageType {
 };
 
 /**
- * @brief Control message
+ * @brief Control message (POD-like, move-optimized)
  */
 struct ControlMessage {
     ControlMessageType type;
     std::string payload;  // JSON string
     uint64_t sequence = 0;
+    
+    ControlMessage() = default;
+    ControlMessage(ControlMessage&&) noexcept = default;
+    ControlMessage& operator=(ControlMessage&&) noexcept = default;
 };
 
 /**
