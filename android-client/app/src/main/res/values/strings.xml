@@ -117,4 +117,29 @@
     <string name="about_version">Version %s</string>
     <string name="about_description">Low-latency screen streaming\nfrom Linux to Android</string>
     <string name="version_info">Version 1.0.0</string>
+    
+    <!-- Settings UI -->
+    <string name="settings_back">Back</string>
+    <string name="section_display">Display</string>
+    <string name="section_data">Data</string>
+    <string name="setting_resolution">Resolution</string>
+    <string name="setting_keep_screen_on">Keep Screen On</string>
+    <string name="setting_keep_screen_on_desc">Prevent screen from turning off during streaming</string>
+    <string name="setting_immersive_mode">Immersive Mode</string>
+    <string name="setting_immersive_mode_desc">Hide system bars during streaming</string>
+    <string name="current_buffer">Current buffer: %dms</string>
+    <string name="reset_settings">Reset Settings</string>
+    <string name="reset_settings_desc">Restore default values</string>
+    <string name="reset_dialog_title">Reset Settings?</string>
+    <string name="reset_dialog_message">All settings will be restored to their default values.</string>
+    <string name="reset">Reset</string>
+    <string name="settings_reset_success">Settings reset successfully</string>
+    
+    <!-- Language -->
+    <string name="section_language">Language</string>
+    <string name="setting_language">Language</string>
+    <string name="setting_language_desc">Select application language</string>
+    <string name="language_system">System Default</string>
+    <string name="language_en">English</string>
+    <string name="language_es">Español</string>
 </resources>

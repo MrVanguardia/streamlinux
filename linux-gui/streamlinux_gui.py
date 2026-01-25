@@ -50,6 +50,19 @@ except ImportError:
     HAS_USB = False
     print("Warning: USB manager not available - USB streaming disabled")
 
+# Import i18n module
+try:
+    from i18n import get_i18n, _, set_language, get_language
+    HAS_I18N = True
+except ImportError:
+    HAS_I18N = False
+    print("Warning: i18n module not available - using English only")
+    def _(key, **kwargs): return key
+    def get_i18n(): return None
+    def set_language(lang): pass
+    def get_language(): return 'en'
+    def get_language(): return 'en'
+
 
 class AppConfig:
     """Persistent configuration manager using JSON file storage"""
@@ -93,6 +106,7 @@ class AppConfig:
         # UI settings
         'window_width': 800,
         'window_height': 600,
+        'language': 'system',  # system, en, es
         
         # USB settings
         'usb_boost_enabled': True,       # Auto-boost quality for USB
@@ -211,6 +225,12 @@ class StreamLinuxApp(Adw.Application):
         
     def do_startup(self):
         Adw.Application.do_startup(self)
+        
+        # Load language setting from config
+        config = AppConfig()
+        lang = config.get('language')
+        if lang and lang != 'system':
+            set_language(lang)
         
         # Create app menu actions
         self.create_action('about', self.on_about)
@@ -373,12 +393,12 @@ class MainWindow(Adw.ApplicationWindow):
         # Menu button
         menu_button = Gtk.MenuButton()
         menu_button.set_icon_name("open-menu-symbolic")
-        menu_button.set_tooltip_text("Menú")
+        menu_button.set_tooltip_text(_('tooltip_settings'))
         
         menu = Gio.Menu()
-        menu.append("Preferencias", "app.preferences")
-        menu.append("Acerca de", "app.about")
-        menu.append("Salir", "app.quit")
+        menu.append(_('preferences'), "app.preferences")
+        menu.append(_('about'), "app.about")
+        menu.append(_('close'), "app.quit")
         menu_button.set_menu_model(menu)
         header.pack_end(menu_button)
         
@@ -455,8 +475,8 @@ class MainWindow(Adw.ApplicationWindow):
     def create_status_section(self):
         """Create the main status/control section"""
         group = Adw.PreferencesGroup()
-        group.set_title("Control de Streaming")
-        group.set_description("Inicia o detén el servidor de streaming")
+        group.set_title(_('section_status'))
+        group.set_description(_('app_subtitle'))
         
         # Status row with big button
         row = Adw.ActionRow()
@@ -469,8 +489,8 @@ class MainWindow(Adw.ApplicationWindow):
         row.add_prefix(self.status_dot)
         
         # Status text
-        self.status_title = "Servidor Detenido"
-        self.status_subtitle = "Presiona Iniciar para comenzar"
+        self.status_title = _('status_stopped')
+        self.status_subtitle = _('tooltip_start')
         row.set_title(self.status_title)
         row.set_subtitle(self.status_subtitle)
         
@@ -490,7 +510,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.toggle_icon = Gtk.Image.new_from_icon_name("media-playback-start-symbolic")
         btn_box.append(self.toggle_icon)
         
-        self.toggle_label = Gtk.Label(label="Iniciar")
+        self.toggle_label = Gtk.Label(label=_('start_stream'))
         self.toggle_label.add_css_class("heading")
         btn_box.append(self.toggle_label)
         
@@ -501,7 +521,7 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Uptime row
         self.uptime_row = Adw.ActionRow()
-        self.uptime_row.set_title("Tiempo activo")
+        self.uptime_row.set_title(_('stream_time'))
         self.uptime_row.set_subtitle("--:--:--")
         self.uptime_row.add_prefix(Gtk.Image.new_from_icon_name("preferences-system-time-symbolic"))
         self.uptime_row.set_visible(False)
@@ -512,8 +532,8 @@ class MainWindow(Adw.ApplicationWindow):
     def create_qr_section(self):
         """Create QR code section"""
         group = Adw.PreferencesGroup()
-        group.set_title("Conexión Rápida")
-        group.set_description("Escanea con la app de Android")
+        group.set_title(_('connection_qr'))
+        group.set_description(_('msg_qr_scan'))
         
         # QR container
         qr_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
@@ -540,7 +560,7 @@ class MainWindow(Adw.ApplicationWindow):
         qr_box.append(qr_frame)
         
         # Regenerate button
-        regen_btn = Gtk.Button(label="Regenerar QR")
+        regen_btn = Gtk.Button(label=_('connection_show_qr'))
         regen_btn.set_halign(Gtk.Align.CENTER)
         regen_btn.connect("clicked", lambda b: self.update_qr_code())
         qr_box.append(regen_btn)
@@ -560,14 +580,14 @@ class MainWindow(Adw.ApplicationWindow):
     def create_quick_settings_section(self):
         """Create quick settings section with persistent configuration"""
         group = Adw.PreferencesGroup()
-        group.set_title("Ajustes Rápidos")
-        group.set_description("Configura el streaming")
+        group.set_title(_('section_stream_settings'))
+        group.set_description(_('app_subtitle'))
         
         # Quality
         self.quality_row = Adw.ComboRow()
-        self.quality_row.set_title("Calidad")
-        self.quality_row.set_subtitle("Resolución de salida")
-        quality_options = ["Auto", "1080p", "720p", "480p"]
+        self.quality_row.set_title(_('video_quality'))
+        self.quality_row.set_subtitle(_('resolution'))
+        quality_options = [_('quality_auto'), "1080p", "720p", "480p"]
         self.quality_row.set_model(Gtk.StringList.new(quality_options))
         # Set from config
         quality_val = self.config.get('video_quality')
@@ -579,8 +599,8 @@ class MainWindow(Adw.ApplicationWindow):
         
         # FPS
         self.fps_row = Adw.ComboRow()
-        self.fps_row.set_title("FPS")
-        self.fps_row.set_subtitle("Cuadros por segundo")
+        self.fps_row.set_title(_('fps'))
+        self.fps_row.set_subtitle(_('video_fps'))
         self.fps_row.set_model(Gtk.StringList.new(["60 FPS", "30 FPS", "24 FPS"]))
         fps_val = self.config.get('video_fps')
         fps_idx = {60: 0, 30: 1, 24: 2}.get(fps_val, 0)
@@ -591,8 +611,8 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Audio
         self.audio_row = Adw.SwitchRow()
-        self.audio_row.set_title("Audio del Sistema")
-        self.audio_row.set_subtitle("Incluir audio en el stream")
+        self.audio_row.set_title(_('audio_system'))
+        self.audio_row.set_subtitle(_('audio_enabled'))
         self.audio_row.set_active(self.config.get('audio_enabled'))
         self.audio_row.add_prefix(Gtk.Image.new_from_icon_name("audio-speakers-symbolic"))
         self.audio_row.connect("notify::active", self._on_audio_changed)
@@ -600,7 +620,7 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Hardware encoding
         self.hw_row = Adw.SwitchRow()
-        self.hw_row.set_title("Aceleración por Hardware")
+        self.hw_row.set_title(_('encoder'))
         self.hw_row.set_subtitle("VAAPI / NVENC")
         hw_enabled = self.config.get('video_encoder') in ['auto', 'vaapi', 'nvenc']
         self.hw_row.set_active(hw_enabled)
@@ -610,7 +630,7 @@ class MainWindow(Adw.ApplicationWindow):
         
         # More settings button
         more_row = Adw.ActionRow()
-        more_row.set_title("Más Ajustes")
+        more_row.set_title(_('preferences'))
         more_row.set_activatable(True)
         more_row.add_prefix(Gtk.Image.new_from_icon_name("emblem-system-symbolic"))
         more_row.add_suffix(Gtk.Image.new_from_icon_name("go-next-symbolic"))
@@ -655,12 +675,12 @@ class MainWindow(Adw.ApplicationWindow):
     def create_connection_section(self):
         """Create connection info section"""
         group = Adw.PreferencesGroup()
-        group.set_title("Información de Red")
-        group.set_description("Datos para conexión manual")
+        group.set_title(_('section_connection'))
+        group.set_description(_('connection_wifi'))
         
         # IP Address
         ip_row = Adw.ActionRow()
-        ip_row.set_title("Dirección IP")
+        ip_row.set_title(_('connection_ip'))
         ip_row.set_subtitle(self.local_ip)
         ip_row.add_prefix(Gtk.Image.new_from_icon_name("network-wired-symbolic"))
         
@@ -674,14 +694,14 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Port (from config)
         self.port_row = Adw.ActionRow()
-        self.port_row.set_title("Puerto")
+        self.port_row.set_title(_('connection_port'))
         self.port_row.set_subtitle(str(self.config.get('port')))
         self.port_row.add_prefix(Gtk.Image.new_from_icon_name("network-server-symbolic"))
         group.add(self.port_row)
         
         # Hostname
         hostname_row = Adw.ActionRow()
-        hostname_row.set_title("Nombre del Host")
+        hostname_row.set_title("Hostname")
         hostname_row.set_subtitle(socket.gethostname())
         hostname_row.add_prefix(Gtk.Image.new_from_icon_name("computer-symbolic"))
         group.add(hostname_row)
@@ -691,8 +711,8 @@ class MainWindow(Adw.ApplicationWindow):
     def create_stats_section(self):
         """Create statistics section"""
         group = Adw.PreferencesGroup()
-        group.set_title("Estadísticas")
-        group.set_description("Métricas en tiempo real")
+        group.set_title(_('section_advanced'))
+        group.set_description(_('latency'))
         
         # Stats grid in a flow box for responsive layout
         stats_box = Gtk.FlowBox()
@@ -714,7 +734,7 @@ class MainWindow(Adw.ApplicationWindow):
         stats_box.append(self.bitrate_stat)
         
         # Clients stat
-        self.clients_stat = self.create_stat_card("0", "Clientes", "phone-symbolic")
+        self.clients_stat = self.create_stat_card("0", _('connected_clients'), "phone-symbolic")
         stats_box.append(self.clients_stat)
         
         # Latency stat
@@ -772,13 +792,13 @@ class MainWindow(Adw.ApplicationWindow):
     def create_usb_section(self):
         """Create USB connection section"""
         group = Adw.PreferencesGroup()
-        group.set_title("🔌 Conexión USB")
-        group.set_description("Conecta tu Android por USB para mejor rendimiento")
+        group.set_title(_('connection_usb'))
+        group.set_description(_('usb_boost_desc'))
         
         # USB Status row
         self.usb_status_row = Adw.ActionRow()
-        self.usb_status_row.set_title("Estado USB")
-        self.usb_status_row.set_subtitle("Buscando dispositivos...")
+        self.usb_status_row.set_title(_('connection_usb'))
+        self.usb_status_row.set_subtitle(_('usb_disconnected'))
         
         self.usb_status_icon = Gtk.Image.new_from_icon_name("phone-symbolic")
         self.usb_status_row.add_prefix(self.usb_status_icon)
@@ -794,8 +814,8 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Port forwarding row
         self.usb_forward_row = Adw.SwitchRow()
-        self.usb_forward_row.set_title("Port Forwarding Activo")
-        self.usb_forward_row.set_subtitle("Permite conexión por localhost")
+        self.usb_forward_row.set_title(_('usb_port_forward'))
+        self.usb_forward_row.set_subtitle(_('usb_port_forward_desc'))
         self.usb_forward_row.set_active(False)
         self.usb_forward_row.set_sensitive(False)  # Enabled when device connected
         self.usb_forward_row.add_prefix(Gtk.Image.new_from_icon_name("network-transmit-symbolic"))
@@ -804,8 +824,8 @@ class MainWindow(Adw.ApplicationWindow):
         
         # USB Quality Boost row
         self.usb_boost_row = Adw.SwitchRow()
-        self.usb_boost_row.set_title("🚀 Calidad Mejorada USB")
-        self.usb_boost_row.set_subtitle("Duplica bitrate automáticamente por USB")
+        self.usb_boost_row.set_title(_('usb_boost'))
+        self.usb_boost_row.set_subtitle(_('usb_boost_subtitle'))
         self.usb_boost_row.set_active(self.config.get('usb_boost_enabled'))
         self.usb_boost_row.add_prefix(Gtk.Image.new_from_icon_name("applications-multimedia-symbolic"))
         self.usb_boost_row.connect("notify::active", self._on_usb_boost_toggled)
@@ -813,8 +833,8 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Info about USB connection
         info_row = Adw.ActionRow()
-        info_row.set_title("Beneficios de USB")
-        info_row.set_subtitle("⚡ Menor latencia • 📊 Mayor estabilidad • 🔒 Sin WiFi")
+        info_row.set_title(_('usb_benefits'))
+        info_row.set_subtitle(_('usb_benefits_desc'))
         info_row.add_prefix(Gtk.Image.new_from_icon_name("dialog-information-symbolic"))
         group.add(info_row)
         
@@ -828,8 +848,8 @@ class MainWindow(Adw.ApplicationWindow):
     def _on_usb_boost_toggled(self, row, param):
         """Handle USB boost toggle"""
         self.config.set('usb_boost_enabled', row.get_active())
-        state = "activada" if row.get_active() else "desactivada"
-        toast = Adw.Toast.new(f"Calidad USB {state}")
+        state = _('enabled') if row.get_active() else _('disabled')
+        toast = Adw.Toast.new(f"{_('usb_quality')} {state}")
         toast.set_timeout(2)
         self.toast_overlay.add_toast(toast)
     
@@ -854,22 +874,22 @@ class MainWindow(Adw.ApplicationWindow):
             device_name = device.model or device.serial
             
             if is_forwarding:
-                self.usb_status_row.set_title("✅ Conectado y Listo")
-                self.usb_status_row.set_subtitle(f"{device_name} • Port forwarding activo")
+                self.usb_status_row.set_title(_('usb_connected'))
+                self.usb_status_row.set_subtitle(f"{device_name} • {_('usb_port_forward_active')}")
                 self.usb_dot.remove_css_class("status-stopped")
                 self.usb_dot.add_css_class("status-running")
                 self.usb_status_icon.set_from_icon_name("phone-symbolic")
             else:
-                self.usb_status_row.set_title("📱 Dispositivo Detectado")
-                self.usb_status_row.set_subtitle(f"{device_name} • Activa port forwarding")
+                self.usb_status_row.set_title(_('usb_device_detected'))
+                self.usb_status_row.set_subtitle(f"{device_name} • {_('usb_activate_forward')}")
                 self.usb_dot.remove_css_class("status-stopped")
                 self.usb_dot.add_css_class("status-warning")
                 
             self.usb_forward_row.set_sensitive(True)
             self.usb_forward_row.set_active(is_forwarding)
         else:
-            self.usb_status_row.set_title("📵 Sin dispositivos")
-            self.usb_status_row.set_subtitle("Conecta tu Android por USB")
+            self.usb_status_row.set_title(_('usb_no_devices'))
+            self.usb_status_row.set_subtitle(_('usb_connect_android'))
             self.usb_dot.remove_css_class("status-running")
             self.usb_dot.remove_css_class("status-warning")
             self.usb_dot.add_css_class("status-stopped")
@@ -888,17 +908,17 @@ class MainWindow(Adw.ApplicationWindow):
             
             success = self.usb_manager.start_port_forwarding(device_serial)
             if success:
-                toast = Adw.Toast.new("✅ Port forwarding activado - Conexión USB lista")
+                toast = Adw.Toast.new(_('usb_forward_enabled'))
                 toast.set_timeout(3)
                 self.toast_overlay.add_toast(toast)
             else:
                 row.set_active(False)
-                toast = Adw.Toast.new("❌ Error al activar port forwarding")
+                toast = Adw.Toast.new(_('usb_forward_error'))
                 toast.set_timeout(3)
                 self.toast_overlay.add_toast(toast)
         else:
             self.usb_manager.stop_port_forwarding()
-            toast = Adw.Toast.new("Port forwarding desactivado")
+            toast = Adw.Toast.new(_('usb_forward_disabled'))
             toast.set_timeout(2)
             self.toast_overlay.add_toast(toast)
         
@@ -911,9 +931,9 @@ class MainWindow(Adw.ApplicationWindow):
     def _handle_usb_connected(self, device):
         """Handle USB device connection on main thread"""
         device_name = device.model or device.serial
-        toast = Adw.Toast.new(f"📱 Android conectado: {device_name}")
+        toast = Adw.Toast.new(f"📱 {_('usb_android_connected')}: {device_name}")
         toast.set_timeout(3)
-        toast.set_button_label("Activar USB")
+        toast.set_button_label(_('usb_activate'))
         toast.connect("button-clicked", lambda t: self._activate_usb_forwarding())
         self.toast_overlay.add_toast(toast)
         self._update_usb_ui()
@@ -930,7 +950,7 @@ class MainWindow(Adw.ApplicationWindow):
     
     def _handle_usb_disconnected(self, serial):
         """Handle USB device disconnection on main thread"""
-        toast = Adw.Toast.new("📵 Dispositivo Android desconectado")
+        toast = Adw.Toast.new(_('usb_android_disconnected'))
         toast.set_timeout(3)
         self.toast_overlay.add_toast(toast)
         self._update_usb_ui()
@@ -1075,7 +1095,7 @@ class MainWindow(Adw.ApplicationWindow):
     def start_streaming(self):
         """Start the streaming service with real WebRTC using persistent config"""
         if not HAS_WEBRTC:
-            toast = Adw.Toast.new("Error: WebRTC no disponible")
+            toast = Adw.Toast.new(_('error_webrtc_unavailable'))
             toast.set_timeout(3)
             self.toast_overlay.add_toast(toast)
             return
@@ -1106,7 +1126,7 @@ class MainWindow(Adw.ApplicationWindow):
                 audio_bitrate = min(int(audio_bitrate * 1.5), 510)  # Boost audio too, max 510kbps
                 print(f"🚀 USB boost enabled: bitrate={bitrate}Mbps, audio={audio_bitrate}kbps")
                 
-                toast = Adw.Toast.new(f"⚡ USB Mode: Calidad mejorada ({bitrate}Mbps)")
+                toast = Adw.Toast.new(f"⚡ USB Mode: {_('usb_quality_improved')} ({bitrate}Mbps)")
                 toast.set_timeout(3)
                 self.toast_overlay.add_toast(toast)
         
@@ -1152,13 +1172,13 @@ class MainWindow(Adw.ApplicationWindow):
         from webrtc_streamer import is_wayland
         if is_wayland():
             print("Wayland session detected - initializing screen capture portal...")
-            toast = Adw.Toast.new("Selecciona la pantalla a compartir...")
+            toast = Adw.Toast.new(_('wayland_select_screen'))
             toast.set_timeout(5)
             self.toast_overlay.add_toast(toast)
             
             # Setup Wayland capture - this will show a dialog
             if not self.streamer.setup_wayland_capture():
-                toast = Adw.Toast.new("❌ Error: No se pudo iniciar la captura de pantalla")
+                toast = Adw.Toast.new(_('error_screen_capture'))
                 toast.set_timeout(5)
                 self.toast_overlay.add_toast(toast)
                 self.stream_state = StreamState.ERROR
@@ -1180,7 +1200,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.streamer.start(signaling_url)
         
         # Show toast
-        toast = Adw.Toast.new("Conectando al servidor...")
+        toast = Adw.Toast.new(_('connecting'))
         toast.set_timeout(2)
         self.toast_overlay.add_toast(toast)
         
@@ -1196,12 +1216,12 @@ class MainWindow(Adw.ApplicationWindow):
             self.stream_state = StreamState.STARTING
         elif state == StreamerState.WAITING:
             self.stream_state = StreamState.STREAMING
-            toast = Adw.Toast.new("✓ Esperando conexiones...")
+            toast = Adw.Toast.new(_('waiting_connections'))
             toast.set_timeout(2)
             self.toast_overlay.add_toast(toast)
         elif state == StreamerState.STREAMING:
             self.stream_state = StreamState.STREAMING
-            toast = Adw.Toast.new("✓ Transmitiendo!")
+            toast = Adw.Toast.new(_('streaming'))
             toast.set_timeout(2)
             self.toast_overlay.add_toast(toast)
         elif state == StreamerState.ERROR:
@@ -1281,7 +1301,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.connected_clients.append(peer_id)
         self.clients_stat.value_label.set_label(str(len(self.connected_clients)))
         
-        toast = Adw.Toast.new(f"📱 Cliente conectado")
+        toast = Adw.Toast.new(_('client_connected'))
         toast.set_timeout(3)
         self.toast_overlay.add_toast(toast)
         
@@ -1295,7 +1315,7 @@ class MainWindow(Adw.ApplicationWindow):
             self.connected_clients.remove(peer_id)
         self.clients_stat.value_label.set_label(str(len(self.connected_clients)))
         
-        toast = Adw.Toast.new("Cliente desconectado")
+        toast = Adw.Toast.new(_('client_disconnected'))
         toast.set_timeout(2)
         self.toast_overlay.add_toast(toast)
         
@@ -1308,7 +1328,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.stream_state = StreamState.ERROR
         self.update_status_ui()
         
-        toast = Adw.Toast.new(f"Error: {error[:50]}...")
+        toast = Adw.Toast.new(f"{_('error')}: {error[:50]}...")
         toast.set_timeout(5)
         self.toast_overlay.add_toast(toast)
         
@@ -1327,7 +1347,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_status_ui()
         
         # Show toast
-        toast = Adw.Toast.new("Streaming detenido")
+        toast = Adw.Toast.new(_('streaming_stopped'))
         toast.set_timeout(2)
         self.toast_overlay.add_toast(toast)
     
@@ -1344,7 +1364,7 @@ class MainWindow(Adw.ApplicationWindow):
         if self.stream_state == StreamState.STOPPED:
             self.status_dot.add_css_class("status-stopped")
             self.toggle_icon.set_from_icon_name("media-playback-start-symbolic")
-            self.toggle_label.set_label("Iniciar")
+            self.toggle_label.set_label(_('start'))
             self.toggle_btn.add_css_class("suggested-action")
             self.toggle_btn.set_sensitive(True)
             self.uptime_row.set_visible(False)
@@ -1352,13 +1372,13 @@ class MainWindow(Adw.ApplicationWindow):
         elif self.stream_state == StreamState.STARTING:
             self.status_dot.add_css_class("status-starting")
             self.toggle_icon.set_from_icon_name("content-loading-symbolic")
-            self.toggle_label.set_label("Iniciando...")
+            self.toggle_label.set_label(_('starting'))
             self.toggle_btn.set_sensitive(False)
             
         elif self.stream_state == StreamState.STREAMING:
             self.status_dot.add_css_class("status-streaming")
             self.toggle_icon.set_from_icon_name("media-playback-stop-symbolic")
-            self.toggle_label.set_label("Detener")
+            self.toggle_label.set_label(_('stop'))
             self.toggle_btn.add_css_class("destructive-action")
             self.toggle_btn.set_sensitive(True)
             self.uptime_row.set_visible(True)
@@ -1387,7 +1407,7 @@ class MainWindow(Adw.ApplicationWindow):
         clipboard = Gdk.Display.get_default().get_clipboard()
         clipboard.set(text)
         
-        toast = Adw.Toast.new("Copiado al portapapeles")
+        toast = Adw.Toast.new(_('success'))
         toast.set_timeout(2)
         self.toast_overlay.add_toast(toast)
     
@@ -1438,13 +1458,13 @@ class MainWindow(Adw.ApplicationWindow):
             license_type=Gtk.License.MIT_X11,
             website="https://vanguardiastudio.us/",
             issue_url="https://github.com/MrVanguardia/streamlinux/issues",
-            comments="⚠️ VERSIÓN EXPERIMENTAL ⚠️\n\nTransmite tu pantalla de Linux a dispositivos Android con baja latencia usando WebRTC.\n\nEste software está en desarrollo activo. Pueden existir errores o funcionalidades incompletas."
+            comments=_('about_description')
         )
-        about.add_credit_section("Tecnologías", ["GTK4", "libadwaita", "WebRTC", "GStreamer", "PipeWire"])
-        about.add_credit_section("Desarrollador", ["MrVanguardia - Vanguardia Studio"])
-        about.add_link("🌐 Página Web", "https://vanguardiastudio.us/")
-        about.add_link("💖 Donar con PayPal", "https://www.paypal.com/invoice/p/#ENPBS57FGYS3EB9J")
-        about.add_link("⭐ GitHub", "https://github.com/MrVanguardia/streamlinux")
+        about.add_credit_section(_('about_technologies'), ["GTK4", "libadwaita", "WebRTC", "GStreamer", "PipeWire"])
+        about.add_credit_section(_('about_developer'), ["MrVanguardia - Vanguardia Studio"])
+        about.add_link(_('about_website'), "https://vanguardiastudio.us/")
+        about.add_link(_('about_donate'), "https://www.paypal.com/invoice/p/#ENPBS57FGYS3EB9J")
+        about.add_link(_('about_github'), "https://github.com/MrVanguardia/streamlinux")
         about.present()
 
 
@@ -1454,12 +1474,15 @@ class PreferencesDialog(Adw.PreferencesWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        self.set_title("Preferencias")
+        self.set_title(_('preferences'))
         self.set_default_size(600, 500)
         self.set_modal(True)
         
         # Get config instance
         self.config = AppConfig()
+        
+        # General page (with language selector)
+        self.add(self.create_general_page())
         
         # Video page
         self.add(self.create_video_page())
@@ -1473,27 +1496,80 @@ class PreferencesDialog(Adw.PreferencesWindow):
         # Advanced page
         self.add(self.create_advanced_page())
     
+    def create_general_page(self):
+        """Create general settings page with language selector"""
+        page = Adw.PreferencesPage()
+        page.set_title(_('pref_general'))
+        page.set_icon_name("preferences-system-symbolic")
+        
+        # Language group
+        lang_group = Adw.PreferencesGroup()
+        lang_group.set_title(_('language'))
+        lang_group.set_description(_('language_desc'))
+        page.add(lang_group)
+        
+        # Language selector
+        self.language_row = Adw.ComboRow()
+        self.language_row.set_title(_('language'))
+        self.language_row.set_subtitle(_('language_subtitle'))
+        self.language_row.set_model(Gtk.StringList.new([
+            _('language_system'),
+            "English",
+            "Español"
+        ]))
+        
+        # Get current language setting
+        lang_val = self.config.get('language')
+        lang_idx = {'system': 0, 'en': 1, 'es': 2}.get(lang_val, 0)
+        self.language_row.set_selected(lang_idx)
+        self.language_row.connect("notify::selected", self._on_language_changed)
+        lang_group.add(self.language_row)
+        
+        # Note about restart
+        restart_label = Gtk.Label(label=_('language_restart'))
+        restart_label.add_css_class("dim-label")
+        restart_label.add_css_class("caption")
+        restart_label.set_margin_top(8)
+        
+        restart_row = Adw.ActionRow()
+        restart_row.set_activatable(False)
+        restart_row.set_child(restart_label)
+        lang_group.add(restart_row)
+        
+        return page
+    
+    def _on_language_changed(self, row, param):
+        """Handle language selection change"""
+        idx = row.get_selected()
+        lang_map = {0: 'system', 1: 'en', 2: 'es'}
+        lang = lang_map.get(idx, 'system')
+        self.config.set('language', lang)
+        
+        # Apply language immediately
+        from i18n import set_language
+        set_language(lang)
+    
     def create_video_page(self):
         """Create video settings page"""
         page = Adw.PreferencesPage()
-        page.set_title("Video")
+        page.set_title(_('pref_video'))
         page.set_icon_name("video-display-symbolic")
         
         # Encoder group
         encoder_group = Adw.PreferencesGroup()
-        encoder_group.set_title("Codificación")
-        encoder_group.set_description("Ajustes del codificador de video")
+        encoder_group.set_title(_('pref_encoding'))
+        encoder_group.set_description(_('pref_encoding_desc'))
         page.add(encoder_group)
         
         # Encoder selection
         self.encoder_row = Adw.ComboRow()
-        self.encoder_row.set_title("Codificador")
-        self.encoder_row.set_subtitle("Método de codificación de video")
+        self.encoder_row.set_title(_('pref_encoder'))
+        self.encoder_row.set_subtitle(_('pref_encoder_desc'))
         self.encoder_row.set_model(Gtk.StringList.new([
-            "Automático (Recomendado)",
-            "VAAPI (Intel/AMD)",
-            "NVENC (NVIDIA)",
-            "Software (x264)"
+            _('encoder_auto'),
+            _('encoder_vaapi'),
+            _('encoder_nvenc'),
+            _('encoder_software')
         ]))
         encoder_val = self.config.get('video_encoder')
         encoder_idx = {'auto': 0, 'vaapi': 1, 'nvenc': 2, 'software': 3}.get(encoder_val, 0)
@@ -1503,22 +1579,22 @@ class PreferencesDialog(Adw.PreferencesWindow):
         
         # Bitrate
         self.bitrate_row = Adw.SpinRow.new_with_range(1, 50, 1)
-        self.bitrate_row.set_title("Bitrate Máximo")
-        self.bitrate_row.set_subtitle("Megabits por segundo")
+        self.bitrate_row.set_title(_('pref_bitrate'))
+        self.bitrate_row.set_subtitle(_('pref_bitrate_desc'))
         self.bitrate_row.set_value(self.config.get('video_bitrate'))
         self.bitrate_row.connect("notify::value", self._on_bitrate_changed)
         encoder_group.add(self.bitrate_row)
         
         # Preset
         self.preset_row = Adw.ComboRow()
-        self.preset_row.set_title("Preset de Velocidad")
-        self.preset_row.set_subtitle("Balance entre calidad y uso de CPU")
+        self.preset_row.set_title(_('pref_preset'))
+        self.preset_row.set_subtitle(_('pref_preset_desc'))
         self.preset_row.set_model(Gtk.StringList.new([
-            "Ultra rápido",
-            "Muy rápido",
-            "Rápido",
-            "Medio",
-            "Lento"
+            _('preset_ultrafast'),
+            _('preset_veryfast'),
+            _('preset_fast'),
+            _('preset_medium'),
+            _('preset_slow')
         ]))
         preset_val = self.config.get('video_preset')
         preset_idx = {'ultrafast': 0, 'veryfast': 1, 'fast': 2, 'medium': 3, 'slow': 4}.get(preset_val, 1)
@@ -1528,19 +1604,19 @@ class PreferencesDialog(Adw.PreferencesWindow):
         
         # Capture group
         capture_group = Adw.PreferencesGroup()
-        capture_group.set_title("Captura")
-        capture_group.set_description("Método de captura de pantalla")
+        capture_group.set_title(_('pref_capture'))
+        capture_group.set_description(_('pref_capture_desc'))
         page.add(capture_group)
         
         # Capture method
         self.capture_row = Adw.ComboRow()
-        self.capture_row.set_title("Método de Captura")
-        self.capture_row.set_subtitle("Backend para capturar la pantalla")
+        self.capture_row.set_title(_('pref_capture_method'))
+        self.capture_row.set_subtitle(_('pref_capture_method_desc'))
         self.capture_row.set_model(Gtk.StringList.new([
-            "Automático",
-            "PipeWire (Wayland)",
-            "XDG Portal",
-            "X11 (XCB)"
+            _('capture_auto'),
+            _('capture_pipewire'),
+            _('capture_portal'),
+            _('capture_x11')
         ]))
         capture_val = self.config.get('capture_method')
         capture_idx = {'auto': 0, 'pipewire': 1, 'xdg-portal': 2, 'x11': 3}.get(capture_val, 0)
@@ -1550,11 +1626,11 @@ class PreferencesDialog(Adw.PreferencesWindow):
         
         # Screen selection
         self.screen_row = Adw.ComboRow()
-        self.screen_row.set_title("Pantalla a Capturar")
+        self.screen_row.set_title(_('pref_screen'))
         self.screen_row.set_model(Gtk.StringList.new([
-            "Pantalla Principal",
-            "Todas las Pantallas",
-            "Ventana Específica"
+            _('screen_primary'),
+            _('screen_all'),
+            _('screen_window')
         ]))
         screen_val = self.config.get('capture_screen')
         screen_idx = max(0, min(2, screen_val + 1))  # -1 -> 0, 0 -> 1, etc
@@ -1590,22 +1666,22 @@ class PreferencesDialog(Adw.PreferencesWindow):
     def create_audio_page(self):
         """Create audio settings page"""
         page = Adw.PreferencesPage()
-        page.set_title("Audio")
+        page.set_title(_('pref_audio'))
         page.set_icon_name("audio-speakers-symbolic")
         
         # Capture group
         capture_group = Adw.PreferencesGroup()
-        capture_group.set_title("Captura de Audio")
+        capture_group.set_title(_('pref_audio_capture'))
         page.add(capture_group)
         
         # Audio source
         self.audio_source_row = Adw.ComboRow()
-        self.audio_source_row.set_title("Fuente de Audio")
+        self.audio_source_row.set_title(_('pref_audio_source'))
         self.audio_source_row.set_model(Gtk.StringList.new([
-            "Audio del Sistema",
-            "Micrófono",
-            "Ambos",
-            "Ninguno"
+            _('audio_system'),
+            _('audio_microphone'),
+            _('audio_both'),
+            _('audio_none')
         ]))
         source_val = self.config.get('audio_source')
         source_idx = {'system': 0, 'microphone': 1, 'both': 2, 'none': 3}.get(source_val, 0)
@@ -1615,13 +1691,13 @@ class PreferencesDialog(Adw.PreferencesWindow):
         
         # Quality group
         quality_group = Adw.PreferencesGroup()
-        quality_group.set_title("Calidad de Audio")
+        quality_group.set_title(_('pref_audio_quality'))
         page.add(quality_group)
         
         # Codec
         self.audio_codec_row = Adw.ComboRow()
-        self.audio_codec_row.set_title("Códec")
-        self.audio_codec_row.set_model(Gtk.StringList.new(["Opus (Recomendado)", "AAC"]))
+        self.audio_codec_row.set_title(_('pref_codec'))
+        self.audio_codec_row.set_model(Gtk.StringList.new([_('codec_opus'), "AAC"]))
         codec_val = self.config.get('audio_codec')
         codec_idx = {'opus': 0, 'aac': 1}.get(codec_val, 0)
         self.audio_codec_row.set_selected(codec_idx)
@@ -1630,11 +1706,11 @@ class PreferencesDialog(Adw.PreferencesWindow):
         
         # Bitrate
         self.audio_bitrate_row = Adw.ComboRow()
-        self.audio_bitrate_row.set_title("Calidad")
+        self.audio_bitrate_row.set_title(_('pref_quality'))
         self.audio_bitrate_row.set_model(Gtk.StringList.new([
-            "Alta (320 kbps)",
-            "Media (192 kbps)",
-            "Baja (128 kbps)"
+            _('quality_high') + " (320 kbps)",
+            _('quality_medium') + " (192 kbps)",
+            _('quality_low') + " (128 kbps)"
         ]))
         bitrate_val = self.config.get('audio_bitrate')
         bitrate_idx = {320: 0, 192: 1, 128: 2}.get(bitrate_val, 0)
@@ -1664,24 +1740,24 @@ class PreferencesDialog(Adw.PreferencesWindow):
     def create_network_page(self):
         """Create network settings page"""
         page = Adw.PreferencesPage()
-        page.set_title("Red")
+        page.set_title(_('pref_network'))
         page.set_icon_name("network-wired-symbolic")
         
         # Server group
         server_group = Adw.PreferencesGroup()
-        server_group.set_title("Servidor")
+        server_group.set_title(_('pref_server'))
         page.add(server_group)
         
         # Port
         self.port_row = Adw.SpinRow.new_with_range(1024, 65535, 1)
-        self.port_row.set_title("Puerto")
-        self.port_row.set_subtitle("Puerto para señalización WebSocket")
+        self.port_row.set_title(_('pref_port'))
+        self.port_row.set_subtitle(_('pref_port_desc'))
         self.port_row.set_value(self.config.get('port'))
         self.port_row.connect("notify::value", self._on_port_changed)
         server_group.add(self.port_row)
         
         # Note about restart
-        restart_label = Gtk.Label(label="⚠️ Cambiar el puerto requiere reiniciar la aplicación")
+        restart_label = Gtk.Label(label=_('pref_port_restart'))
         restart_label.add_css_class("dim-label")
         restart_label.add_css_class("caption")
         restart_label.set_margin_top(8)
@@ -1698,14 +1774,14 @@ class PreferencesDialog(Adw.PreferencesWindow):
         
         # STUN server
         self.stun_row = Adw.EntryRow()
-        self.stun_row.set_title("Servidor STUN")
+        self.stun_row.set_title(_('pref_stun'))
         self.stun_row.set_text(self.config.get('stun_server'))
         self.stun_row.connect("changed", self._on_stun_changed)
         webrtc_group.add(self.stun_row)
         
         # TURN server (optional)
         self.turn_row = Adw.EntryRow()
-        self.turn_row.set_title("Servidor TURN (opcional)")
+        self.turn_row.set_title(_('pref_turn'))
         self.turn_row.set_text(self.config.get('turn_server'))
         self.turn_row.connect("changed", self._on_turn_changed)
         webrtc_group.add(self.turn_row)
@@ -1724,68 +1800,68 @@ class PreferencesDialog(Adw.PreferencesWindow):
     def create_advanced_page(self):
         """Create advanced settings page"""
         page = Adw.PreferencesPage()
-        page.set_title("Avanzado")
+        page.set_title(_('pref_advanced'))
         page.set_icon_name("applications-system-symbolic")
         
         # Startup group
         startup_group = Adw.PreferencesGroup()
-        startup_group.set_title("Inicio")
+        startup_group.set_title(_('pref_startup'))
         page.add(startup_group)
         
         # Auto-start
         self.autostart_row = Adw.SwitchRow()
-        self.autostart_row.set_title("Iniciar con el sistema")
-        self.autostart_row.set_subtitle("Iniciar StreamLinux al arrancar la sesión")
+        self.autostart_row.set_title(_('pref_autostart'))
+        self.autostart_row.set_subtitle(_('pref_autostart_desc'))
         self.autostart_row.set_active(self.config.get('autostart'))
         self.autostart_row.connect("notify::active", self._on_autostart_changed)
         startup_group.add(self.autostart_row)
         
         # Auto-stream
         self.autostream_row = Adw.SwitchRow()
-        self.autostream_row.set_title("Iniciar streaming automáticamente")
-        self.autostream_row.set_subtitle("Comenzar a transmitir al abrir la app")
+        self.autostream_row.set_title(_('pref_autostream'))
+        self.autostream_row.set_subtitle(_('pref_autostream_desc'))
         self.autostream_row.set_active(self.config.get('autostream'))
         self.autostream_row.connect("notify::active", self._on_autostream_changed)
         startup_group.add(self.autostream_row)
         
         # Minimize to tray
         self.tray_row = Adw.SwitchRow()
-        self.tray_row.set_title("Minimizar a la bandeja")
-        self.tray_row.set_subtitle("Continuar en segundo plano al cerrar")
+        self.tray_row.set_title(_('pref_tray'))
+        self.tray_row.set_subtitle(_('pref_tray_desc'))
         self.tray_row.set_active(self.config.get('minimize_to_tray'))
         self.tray_row.connect("notify::active", self._on_tray_changed)
         startup_group.add(self.tray_row)
         
         # Debug group
         debug_group = Adw.PreferencesGroup()
-        debug_group.set_title("Depuración")
+        debug_group.set_title(_('pref_debug'))
         page.add(debug_group)
         
         # Verbose logging
         self.log_row = Adw.SwitchRow()
-        self.log_row.set_title("Registro detallado")
-        self.log_row.set_subtitle("Habilitar logs de depuración")
+        self.log_row.set_title(_('pref_verbose'))
+        self.log_row.set_subtitle(_('pref_verbose_desc'))
         self.log_row.set_active(self.config.get('verbose_logging'))
         self.log_row.connect("notify::active", self._on_log_changed)
         debug_group.add(self.log_row)
         
         # Show stats overlay
         self.stats_row = Adw.SwitchRow()
-        self.stats_row.set_title("Mostrar estadísticas en pantalla")
-        self.stats_row.set_subtitle("Overlay con FPS y bitrate")
+        self.stats_row.set_title(_('pref_stats_overlay'))
+        self.stats_row.set_subtitle(_('pref_stats_overlay_desc'))
         self.stats_row.set_active(self.config.get('show_stats_overlay'))
         self.stats_row.connect("notify::active", self._on_stats_changed)
         debug_group.add(self.stats_row)
         
         # Reset group
         reset_group = Adw.PreferencesGroup()
-        reset_group.set_title("Datos")
+        reset_group.set_title(_('pref_data'))
         page.add(reset_group)
         
         # Reset to defaults
         reset_row = Adw.ActionRow()
-        reset_row.set_title("Restablecer Ajustes")
-        reset_row.set_subtitle("Volver a los valores predeterminados")
+        reset_row.set_title(_('pref_reset'))
+        reset_row.set_subtitle(_('pref_reset_desc'))
         reset_row.set_activatable(True)
         reset_row.add_prefix(Gtk.Image.new_from_icon_name("edit-clear-all-symbolic"))
         reset_row.add_suffix(Gtk.Image.new_from_icon_name("go-next-symbolic"))
@@ -1841,11 +1917,11 @@ X-GNOME-Autostart-enabled=true
         """Show confirmation dialog for reset"""
         dialog = Adw.MessageDialog(
             transient_for=self,
-            heading="¿Restablecer ajustes?",
-            body="Se perderán todos los cambios y se restaurarán los valores predeterminados."
+            heading=_('reset_confirm_title'),
+            body=_('reset_confirm_body')
         )
-        dialog.add_response("cancel", "Cancelar")
-        dialog.add_response("reset", "Restablecer")
+        dialog.add_response("cancel", _('cancel'))
+        dialog.add_response("reset", _('reset'))
         dialog.set_response_appearance("reset", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.connect("response", self._on_reset_response)
         dialog.present()

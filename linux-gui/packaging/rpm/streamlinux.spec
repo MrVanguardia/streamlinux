@@ -1,10 +1,10 @@
 Name:           streamlinux
-Version:        1.0.0
+Version:        1.0.1
 Release:        1%{?dist}
 Summary:        Stream your Linux screen to Android devices
 
 License:        MIT
-URL:            https://github.com/streamlinux
+URL:            https://github.com/MrVanguardia/streamlinux
 Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      noarch
@@ -35,6 +35,7 @@ Features:
 - Support for both X11 and Wayland desktops
 - QR code for easy mobile connection
 - Modern GTK4/libadwaita interface
+- Multi-language support (English/Spanish)
 
 %prep
 %autosetup
@@ -46,8 +47,11 @@ Features:
 # Install main script
 install -D -m 755 streamlinux_gui.py "%{buildroot}%{_bindir}/streamlinux-gui"
 
-# Install webrtc streamer module
+# Install Python modules
 install -D -m 644 webrtc_streamer.py "%{buildroot}%{_datadir}/streamlinux/webrtc_streamer.py"
+install -D -m 644 i18n.py "%{buildroot}%{_datadir}/streamlinux/i18n.py"
+install -D -m 644 portal_screencast.py "%{buildroot}%{_datadir}/streamlinux/portal_screencast.py"
+install -D -m 644 usb_manager.py "%{buildroot}%{_datadir}/streamlinux/usb_manager.py"
 
 # Install desktop file
 install -D -m 644 data/com.streamlinux.host.desktop "%{buildroot}%{_datadir}/applications/com.streamlinux.host.desktop"
@@ -64,10 +68,19 @@ desktop-file-validate "%{buildroot}%{_datadir}/applications/com.streamlinux.host
 %files
 %{_bindir}/streamlinux-gui
 %{_datadir}/streamlinux/webrtc_streamer.py
+%{_datadir}/streamlinux/i18n.py
+%{_datadir}/streamlinux/portal_screencast.py
+%{_datadir}/streamlinux/usb_manager.py
 %{_datadir}/applications/com.streamlinux.host.desktop
 %{_datadir}/icons/hicolor/scalable/apps/streamlinux.svg
 %{_datadir}/metainfo/com.streamlinux.host.metainfo.xml
 
 %changelog
-* Sat Jan 24 2026 StreamLinux Team <contact@streamlinux.dev> - 1.0.0-1
+* Sat Jan 25 2025 Vanguardia Studio <contact@vanguardiastudio.us> - 1.0.1-1
+- Added multi-language support (English/Spanish)
+- Language auto-detection from system settings
+- Language selector in preferences
+- Fixed various UI strings
+
+* Thu Jan 23 2025 Vanguardia Studio <contact@vanguardiastudio.us> - 1.0.0-1
 - Initial release
