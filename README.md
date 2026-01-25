@@ -30,7 +30,19 @@
 
 ---
 
-## 📦 Installation
+## � Downloads
+
+| Platform | File | Size |
+|----------|------|------|
+| 🐧 **Fedora/RHEL** | [streamlinux-1.1.1-1.fc43.noarch.rpm](https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/streamlinux-1.1.1-1.fc43.noarch.rpm) | 49 KB |
+| 🍃 **Universal Linux** | [streamlinux-1.1.1-linux-universal.tar.gz](https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/streamlinux-1.1.1-linux-universal.tar.gz) | 5.8 MB |
+| 📱 **Android** | [StreamLinux-1.1.1-android.apk](https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/StreamLinux-1.1.1-android.apk) | ~32 MB |
+
+> ⚠️ **Note:** The universal installer (tar.gz) is **EXPERIMENTAL** and has only been tested on **Linux Mint** and **Fedora**. Use the RPM for Fedora-based distributions.
+
+---
+
+## �📦 Installation
 
 ### Quick Install (Recommended)
 
@@ -54,9 +66,12 @@ sudo rpm -e streamlinux
 <summary><strong>🍃 Linux Mint / Ubuntu / Debian (Universal Installer)</strong></summary>
 
 ```bash
-# Download and run the universal installer
-wget https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/install.sh
-chmod +x install.sh
+# Download the universal installer
+wget https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/streamlinux-1.1.1-linux-universal.tar.gz
+
+# Extract and install
+tar -xzvf streamlinux-1.1.1-linux-universal.tar.gz
+cd streamlinux-1.1.1-linux
 ./install.sh
 ```
 
