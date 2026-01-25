@@ -116,7 +116,7 @@
     <!-- About -->
     <string name="about_version">Versión %s</string>
     <string name="about_description">Streaming de pantalla de baja latencia\ndesde Linux a Android</string>
-    <string name="version_info">Versión 1.0.0</string>
+    <string name="version_info">Versión 1.1.2</string>
     
     <!-- Settings UI -->
     <string name="settings_back">Atrás</string>

@@ -1159,10 +1159,12 @@ class MainWindow(Adw.ApplicationWindow):
         """Start the signaling server if not running"""
         # Find the signaling server binary - check multiple locations
         possible_paths = [
-            Path("/usr/local/lib/signaling-server/signaling-server"),
-            Path(__file__).parent.parent / "signaling-server" / "signaling-server",
-            Path(__file__).parent / "signaling-server",
-            Path("/usr/lib/signaling-server/signaling-server"),
+            Path("/usr/lib64/signaling-server/signaling-server"),  # Fedora 64-bit RPM
+            Path("/usr/lib/signaling-server/signaling-server"),    # Other RPM distros
+            Path("/usr/local/lib/signaling-server/signaling-server"),  # Manual install
+            Path(__file__).parent.parent / "signaling-server" / "signaling-server",  # Dev
+            Path(__file__).parent / "signaling-server",  # Same dir
+            Path("/usr/share/streamlinux/signaling-server"),  # Alternative install
         ]
         
         server_path = None
@@ -1605,7 +1607,7 @@ class MainWindow(Adw.ApplicationWindow):
             application_name="StreamLinux",
             application_icon="video-display",
             developer_name="Vanguardia Studio",
-            version="1.0.0 (Experimental)",
+            version="1.1.2",
             copyright="© 2026 Vanguardia Studio",
             license_type=Gtk.License.MIT_X11,
             website="https://vanguardiastudio.us/",
@@ -1615,7 +1617,6 @@ class MainWindow(Adw.ApplicationWindow):
         about.add_credit_section(_('about_technologies'), ["GTK4", "libadwaita", "WebRTC", "GStreamer", "PipeWire"])
         about.add_credit_section(_('about_developer'), ["MrVanguardia - Vanguardia Studio"])
         about.add_link(_('about_website'), "https://vanguardiastudio.us/")
-        about.add_link(_('about_donate'), "https://www.paypal.com/invoice/p/#ENPBS57FGYS3EB9J")
         about.add_link(_('about_github'), "https://github.com/MrVanguardia/streamlinux")
         about.present()
 

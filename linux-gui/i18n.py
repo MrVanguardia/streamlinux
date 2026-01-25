@@ -229,7 +229,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'streaming_stopped': 'Streaming stopped',
         
         # About dialog
-        'about_description': '⚠️ EXPERIMENTAL VERSION ⚠️\n\nStream your Linux screen to Android devices with low latency using WebRTC.\n\nThis software is under active development. Bugs or incomplete features may exist.',
+        'about_description': 'Stream your Linux screen to Android devices with low latency using WebRTC.\n\nFeatures:\n• Hardware-accelerated video encoding\n• High-quality Opus audio\n• Wayland & X11 support\n• QR code for easy connection',
         'about_technologies': 'Technologies',
         'about_developer': 'Developer',
         'about_website': '🌐 Website',
@@ -551,7 +551,7 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'streaming_stopped': 'Transmisión detenida',
         
         # About dialog
-        'about_description': '⚠️ VERSIÓN EXPERIMENTAL ⚠️\n\nTransmite tu pantalla de Linux a dispositivos Android con baja latencia usando WebRTC.\n\nEste software está en desarrollo activo. Pueden existir errores o funcionalidades incompletas.',
+        'about_description': 'Transmite tu pantalla de Linux a dispositivos Android con baja latencia usando WebRTC.\n\nCaracterísticas:\n• Codificación de video acelerada por hardware\n• Audio de alta calidad con Opus\n• Soporte para Wayland y X11\n• Código QR para conexión fácil',
         'about_technologies': 'Tecnologías',
         'about_developer': 'Desarrollador',
         'about_website': '🌐 Página Web',

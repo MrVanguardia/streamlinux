@@ -14,7 +14,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="1.1.1"
+VERSION="1.1.2"
 
 print_banner() {
     echo -e "${BLUE}"

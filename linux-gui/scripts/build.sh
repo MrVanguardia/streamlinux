@@ -5,7 +5,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-VERSION="1.1.1"
+VERSION="1.1.2"
 BUILD_DIR="$PROJECT_ROOT/build"
 
 # Colors for output
@@ -44,6 +44,15 @@ build_tarball() {
     cp "$PROJECT_ROOT/usb_manager.py" "$TARBALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_ROOT/requirements.txt" "$TARBALL_DIR/"
     cp -r "$PROJECT_ROOT/data" "$TARBALL_DIR/"
+    
+    # Copy signaling server binary
+    SIGNALING_SERVER="$PROJECT_ROOT/../signaling-server/signaling-server"
+    if [ -f "$SIGNALING_SERVER" ]; then
+        cp "$SIGNALING_SERVER" "$TARBALL_DIR/"
+        print_status "Included signaling server binary"
+    else
+        print_warning "Signaling server binary not found at $SIGNALING_SERVER"
+    fi
     
     # Copy license and readme from parent
     if [ -f "$PROJECT_ROOT/../LICENSE" ]; then
@@ -93,7 +102,8 @@ build_rpm() {
     # Build RPM
     rpmbuild --define "_topdir $RPM_BUILD_ROOT" -ba "$RPM_BUILD_ROOT/SPECS/streamlinux.spec"
     
-    # Copy result
+    # Copy result (check both x86_64 and noarch)
+    cp "$RPM_BUILD_ROOT/RPMS/x86_64/"*.rpm "$BUILD_DIR/" 2>/dev/null || \
     cp "$RPM_BUILD_ROOT/RPMS/noarch/"*.rpm "$BUILD_DIR/" 2>/dev/null || true
     
     print_status "RPM package built successfully!"

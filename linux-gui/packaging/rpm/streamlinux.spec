@@ -1,5 +1,5 @@
 Name:           streamlinux
-Version:        1.1.1
+Version:        1.1.2
 Release:        1%{?dist}
 Summary:        Stream your Linux screen to Android devices
 
@@ -7,7 +7,10 @@ License:        MIT
 URL:            https://github.com/MrVanguardia/streamlinux
 Source0:        %{name}-%{version}.tar.gz
 
-BuildArch:      noarch
+# Not noarch because we include the Go signaling-server binary
+# Disable debug package generation (signaling-server is pre-built)
+%global debug_package %{nil}
+
 BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
 BuildRequires:  desktop-file-utils
@@ -66,6 +69,9 @@ install -D -m 644 data/icons/streamlinux.svg "%{buildroot}%{_datadir}/icons/hico
 # Install metainfo
 install -D -m 644 data/com.streamlinux.host.metainfo.xml "%{buildroot}%{_datadir}/metainfo/com.streamlinux.host.metainfo.xml"
 
+# Install signaling server (Go binary)
+install -D -m 755 signaling-server "%{buildroot}/usr/lib/signaling-server/signaling-server"
+
 %check
 desktop-file-validate "%{buildroot}%{_datadir}/applications/com.streamlinux.host.desktop"
 
@@ -79,9 +85,14 @@ desktop-file-validate "%{buildroot}%{_datadir}/applications/com.streamlinux.host
 %{_datadir}/applications/com.streamlinux.host.desktop
 %{_datadir}/icons/hicolor/scalable/apps/streamlinux.svg
 %{_datadir}/metainfo/com.streamlinux.host.metainfo.xml
+/usr/lib/signaling-server/signaling-server
 
 %changelog
-* Sat Jan 25 2025 Vanguardia Studio <contact@vanguardiastudio.us> - 1.1.0-1
+* Sat Jan 25 2025 Vanguardia Studio <contact@vanguardiastudio.us> - 1.1.1-2
+- Fixed: Include signaling server binary in RPM package
+- Fixed: WebSocket connection error due to missing signaling server
+
+* Sat Jan 25 2025 Vanguardia Studio <contact@vanguardiastudio.us> - 1.1.1-1
 - Added security module with PIN-based device authorization
 - Cryptographically secure session tokens
 - Rate limiting for connection attempts

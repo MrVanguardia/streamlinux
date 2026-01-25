@@ -1159,10 +1159,12 @@ class MainWindow(Adw.ApplicationWindow):
         """Start the signaling server if not running"""
         # Find the signaling server binary - check multiple locations
         possible_paths = [
-            Path("/usr/local/lib/signaling-server/signaling-server"),
-            Path(__file__).parent.parent / "signaling-server" / "signaling-server",
-            Path(__file__).parent / "signaling-server",
-            Path("/usr/lib/signaling-server/signaling-server"),
+            Path("/usr/lib64/signaling-server/signaling-server"),  # Fedora 64-bit RPM
+            Path("/usr/lib/signaling-server/signaling-server"),    # Other RPM distros
+            Path("/usr/local/lib/signaling-server/signaling-server"),  # Manual install
+            Path(__file__).parent.parent / "signaling-server" / "signaling-server",  # Dev
+            Path(__file__).parent / "signaling-server",  # Same dir
+            Path("/usr/share/streamlinux/signaling-server"),  # Alternative install
         ]
         
         server_path = None

@@ -26,6 +26,7 @@ BOLD='\033[1m'
 
 VERSION="1.1.1"
 GITHUB_URL="https://github.com/MrVanguardia/streamlinux"
+RELEASE_URL="$GITHUB_URL/releases/download/v$VERSION"
 
 # Installation paths
 INSTALL_DIR="/usr/share/streamlinux"
@@ -33,9 +34,6 @@ BIN_DIR="/usr/bin"
 DESKTOP_DIR="/usr/share/applications"
 ICON_DIR="/usr/share/icons/hicolor/scalable/apps"
 SIGNALING_DIR="/usr/local/lib/signaling-server"
-
-# Get script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 print_banner() {
     echo -e "${CYAN}"
@@ -221,15 +219,39 @@ install_dependencies() {
     print_status "Dependencies installed"
 }
 
+download_files() {
+    print_step "Downloading StreamLinux files..."
+    
+    # Create temp directory
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    
+    # Download main Python files from GitHub
+    local files=("streamlinux_gui.py" "webrtc_streamer.py" "portal_screencast.py" "security.py" "i18n.py" "usb_manager.py")
+    
+    for file in "${files[@]}"; do
+        print_info "Downloading $file..."
+        curl -sL "$GITHUB_URL/raw/main/linux-gui/$file" -o "$file" || {
+            print_error "Failed to download $file"
+            exit 1
+        }
+    done
+    
+    # Download signaling server
+    print_info "Downloading signaling server..."
+    curl -sL "$GITHUB_URL/raw/main/signaling-server/signaling-server" -o "signaling-server" 2>/dev/null || \
+    print_info "Signaling server binary not available, will need to be built manually"
+    
+    # Download icon and desktop file
+    print_info "Downloading assets..."
+    curl -sL "$GITHUB_URL/raw/main/linux-gui/data/icons/streamlinux.svg" -o "streamlinux.svg"
+    curl -sL "$GITHUB_URL/raw/main/linux-gui/data/com.streamlinux.host.desktop" -o "com.streamlinux.host.desktop"
+    
+    print_status "Files downloaded"
+}
+
 install_files() {
     print_step "Installing StreamLinux..."
-    
-    # Check if files exist locally
-    if [ ! -f "$SCRIPT_DIR/streamlinux_gui.py" ]; then
-        print_error "Installation files not found!"
-        print_error "Make sure you extracted the tar.gz correctly and run install.sh from inside the extracted folder."
-        exit 1
-    fi
     
     # Create directories
     sudo mkdir -p "$INSTALL_DIR"
@@ -238,30 +260,34 @@ install_files() {
     
     # Install Python files
     print_info "Installing application files..."
-    sudo cp "$SCRIPT_DIR/streamlinux_gui.py" "$BIN_DIR/streamlinux-gui"
+    sudo cp streamlinux_gui.py "$BIN_DIR/streamlinux-gui"
     sudo chmod +x "$BIN_DIR/streamlinux-gui"
     
-    sudo cp "$SCRIPT_DIR/webrtc_streamer.py" "$INSTALL_DIR/"
-    sudo cp "$SCRIPT_DIR/portal_screencast.py" "$INSTALL_DIR/"
-    sudo cp "$SCRIPT_DIR/security.py" "$INSTALL_DIR/"
-    sudo cp "$SCRIPT_DIR/i18n.py" "$INSTALL_DIR/"
-    sudo cp "$SCRIPT_DIR/usb_manager.py" "$INSTALL_DIR/"
+    sudo cp webrtc_streamer.py "$INSTALL_DIR/"
+    sudo cp portal_screencast.py "$INSTALL_DIR/"
+    sudo cp security.py "$INSTALL_DIR/"
+    sudo cp i18n.py "$INSTALL_DIR/"
+    sudo cp usb_manager.py "$INSTALL_DIR/"
     
     # Install signaling server if available
-    if [ -f "$SCRIPT_DIR/signaling-server" ]; then
+    if [ -f "signaling-server" ] && [ -s "signaling-server" ]; then
         print_info "Installing signaling server..."
-        sudo cp "$SCRIPT_DIR/signaling-server" "$SIGNALING_DIR/"
+        sudo cp signaling-server "$SIGNALING_DIR/"
         sudo chmod +x "$SIGNALING_DIR/signaling-server"
     fi
     
     # Install icon and desktop file
     print_info "Installing desktop integration..."
-    sudo cp "$SCRIPT_DIR/streamlinux.svg" "$ICON_DIR/"
-    sudo cp "$SCRIPT_DIR/com.streamlinux.host.desktop" "$DESKTOP_DIR/"
+    sudo cp streamlinux.svg "$ICON_DIR/"
+    sudo cp com.streamlinux.host.desktop "$DESKTOP_DIR/"
     
     # Update caches
     sudo gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
     sudo update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
+    
+    # Cleanup
+    cd /
+    rm -rf "$TEMP_DIR"
     
     print_status "StreamLinux installed successfully!"
 }
@@ -320,6 +346,7 @@ main() {
             detect_package_manager
             check_requirements
             install_dependencies
+            download_files
             install_files
             print_success
             ;;
