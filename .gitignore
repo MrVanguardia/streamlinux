@@ -1,0 +1,48 @@
+# Build outputs
+*.apk
+*.rpm
+*.tar.gz
+*.flatpak
+
+# Android
+android-client/.gradle/
+android-client/build/
+android-client/app/build/
+android-client/local.properties
+android-client/.idea/
+*.iml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Linux build
+linux-gui/build/
+linux-host/build/
+
+# Go
+signaling-server/signaling-server
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
+*.log
