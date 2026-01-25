@@ -39,7 +39,7 @@ If you discover a security vulnerability, please:
 
 ### Do
 
-1. **Report privately** by emailing [studiovanguardia3@gmail.com] or opening a private security advisory on GitHub
+1. **Report privately** by emailing studiovanguardia3@gmail.com or opening a private security advisory on GitHub
 2. **Provide details**: Include steps to reproduce, potential impact, and affected versions
 3. **Give us time**: Allow reasonable time (30-90 days) to address the issue before public disclosure
 
