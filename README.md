@@ -1,100 +1,253 @@
-# StreamLinux
+<p align="center">
+  <img src="linux-gui/data/icons/streamlinux.svg" alt="StreamLinux Logo" width="120" height="120">
+</p>
 
-**Sistema de Streaming de Pantalla y Audio Linux → Android**
+<h1 align="center">StreamLinux</h1>
 
-StreamLinux permite transmitir la pantalla y el audio de un sistema Linux a dispositivos Android en tiempo real con baja latencia, utilizando WebRTC como protocolo de transporte.
+<p align="center">
+  <strong>🖥️ Stream your Linux screen to Android devices with ultra-low latency</strong>
+</p>
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Android-green.svg)
-![Version](https://img.shields.io/badge/version-1.1.1-orange.svg)
+<p align="center">
+  <a href="#-installation">Installation</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-usage">Usage</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-contributing">Contributing</a>
+</p>
 
-## 🤔 ¿Por qué 3 Lenguajes Diferentes?
+<p align="center">
+  <img src="https://img.shields.io/badge/version-1.1.1-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+  <img src="https://img.shields.io/badge/platform-Linux%20%7C%20Android-orange.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/python-3.10+-yellow.svg" alt="Python">
+  <img src="https://img.shields.io/badge/kotlin-1.9+-purple.svg" alt="Kotlin">
+</p>
 
-Una pregunta frecuente es por qué el proyecto usa **Python**, **Kotlin** y **Go**. La respuesta es simple: **cada lenguaje es el mejor para su tarea específica**.
+<p align="center">
+  <img src="https://img.shields.io/badge/⚠️_EXPERIMENTAL-This_is_a_beta_version-red.svg" alt="Experimental">
+</p>
 
-| Componente | Lenguaje | ¿Por qué? |
-|------------|----------|-----------|
-| **Linux GUI** | Python + GTK4 | Integración nativa con el escritorio Linux (GNOME/GTK), acceso directo a GStreamer via GObject, desarrollo rápido de UI con libadwaita, y compatibilidad perfecta con xdg-desktop-portal para Wayland |
-| **Android Client** | Kotlin | Lenguaje oficial de Android, acceso nativo a MediaCodec para decodificación por hardware, Jetpack Compose para UI moderna, y mejor rendimiento que alternativas cross-platform |
-| **Signaling Server** | Go | Perfecto para servidores WebSocket concurrentes, compilación a binario único sin dependencias, goroutines para manejar miles de conexiones, y despliegue trivial |
+---
 
-### Alternativas Consideradas y Descartadas:
+## 📦 Installation
 
-- **Electron/React Native**: Demasiado overhead para streaming de baja latencia
-- **Flutter**: Sin acceso nativo a PipeWire/GStreamer en Linux
-- **Rust**: Excelente pero ecosistema GTK4 menos maduro
-- **Node.js para servidor**: Mayor consumo de memoria, menos eficiente para WebSockets masivos
+### Quick Install (Recommended)
 
-## 🎯 Características
+<details>
+<summary><strong>🐧 Fedora / RHEL / CentOS (RPM)</strong></summary>
 
-- **Captura de Pantalla**
-  - Soporte para X11 (XCB/SHM) y Wayland (xdg-desktop-portal/PipeWire)
-  - Auto-detección del backend gráfico
-  - Captura de monitor específico o pantalla completa
+```bash
+# Download and install the RPM package
+wget https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/streamlinux-1.1.1-1.fc43.noarch.rpm
+sudo rpm -ivh streamlinux-1.1.1-1.fc43.noarch.rpm
+```
 
-- **Captura de Audio**
-  - PipeWire (preferido) y PulseAudio (fallback)
-  - Captura de salida del sistema (monitor)
+**To uninstall:**
+```bash
+sudo rpm -e streamlinux
+```
 
-- **Codificación de Video**
-  - H.264 con aceleración por hardware (VAAPI, NVENC, AMF)
-  - Fallback a codificación por software (libx264)
-  - Configuración adaptativa de bitrate
+</details>
 
-- **Codificación de Audio**
-  - Codec Opus para baja latencia
-  - 48kHz, estéreo
+<details>
+<summary><strong>🍃 Linux Mint / Ubuntu / Debian (Universal Installer)</strong></summary>
 
-- **Transporte**
-  - WebRTC con DTLS para seguridad
-  - Conexión P2P cuando es posible
-  - Servidor de señalización WebSocket
+```bash
+# Download and run the universal installer
+wget https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/install.sh
+chmod +x install.sh
+./install.sh
+```
 
-- **Cliente Android**
-  - Decodificación por hardware usando MediaCodec
-  - Sincronización A/V precisa
-  - Descubrimiento automático en LAN
-  - Conexión por código QR
+> ⚠️ **Note:** The universal installer is **EXPERIMENTAL** and has only been tested on **Linux Mint 21/22** and **Fedora 39/40**. It may work on other distributions but is not guaranteed. Please [report issues](https://github.com/MrVanguardia/streamlinux/issues)!
 
-## 📋 Requisitos
+**To uninstall:**
+```bash
+./install.sh --uninstall
+```
+
+</details>
+
+<details>
+<summary><strong>📱 Android App</strong></summary>
+
+1. Download the APK from the [releases page](https://github.com/MrVanguardia/streamlinux/releases/latest)
+2. On your Android device, enable **"Install from unknown sources"** in Settings
+3. Open the downloaded APK and install it
+4. Launch **StreamLinux** and scan the QR code from your Linux host
+
+**Direct download:**
+```
+https://github.com/MrVanguardia/streamlinux/releases/download/v1.1.1/StreamLinux-1.1.1-android.apk
+```
+
+</details>
+
+---
+
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 🖥️ Linux Host
+- **Screen Capture**
+  - X11 (XCB/SHM) support
+  - Wayland (xdg-desktop-portal/PipeWire)
+  - Auto-detection of display server
+  
+- **Video Encoding**
+  - Hardware acceleration (VAAPI, NVENC)
+  - Software fallback (H.264)
+  - Adaptive bitrate
+
+- **Audio Streaming**
+  - PipeWire & PulseAudio support
+  - System audio capture
+  - Opus codec (low latency)
+
+</td>
+<td width="50%">
+
+### 📱 Android Client
+- **Video Decoding**
+  - Hardware acceleration (MediaCodec)
+  - Smooth playback
+  
+- **Connection**
+  - QR code scanning
+  - LAN auto-discovery
+  - USB connection (ADB port forwarding)
+  
+- **Features**
+  - Full-screen mode
+  - Touch pass-through (coming soon)
+  - Multi-language (EN/ES)
+
+</td>
+</tr>
+</table>
+
+### 🌐 Multi-Language Architecture
+
+| Component | Language | Why? |
+|-----------|----------|------|
+| **Linux GUI** | Python + GTK4 | Native desktop integration, GStreamer access, libadwaita UI |
+| **Android Client** | Kotlin | Official Android language, native MediaCodec access |
+| **Signaling Server** | Go | Excellent for concurrent WebSocket connections, single binary |
+
+---
+
+## 🚀 Usage
+
+### 1. Start StreamLinux on Linux
+
+```bash
+# Launch from terminal
+streamlinux-gui
+
+# Or from your applications menu, search for "StreamLinux"
+```
+
+### 2. Connect from Android
+
+1. Open the **StreamLinux** app on your Android device
+2. Make sure both devices are on the **same network**
+3. **Scan the QR code** displayed on your Linux host
+4. Enjoy your stream! 🎉
+
+### Connection Options
+
+| Method | Description |
+|--------|-------------|
+| **📶 WiFi** | Both devices on the same local network |
+| **🔌 USB** | Connect via ADB port forwarding (lower latency) |
+| **📷 QR Code** | Quick connection by scanning |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         LINUX HOST                               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │ Display      │  │ Audio        │  │ Encoder              │   │
+│  │ Backend      │  │ Capture      │  │ (H.264/Opus)         │   │
+│  │ (X11/Wayland)│  │ (PipeWire/   │  │ HW: VAAPI/NVENC      │   │
+│  │              │  │  PulseAudio) │  │ SW: libx264          │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
+│         │                 │                      │               │
+│         └────────────┬────┴──────────────────────┘               │
+│                      │                                           │
+│              ┌───────▼────────┐                                  │
+│              │ WebRTC Transport│                                  │
+│              └───────┬────────┘                                  │
+└──────────────────────┼───────────────────────────────────────────┘
+                       │ DTLS/SRTP
+              ┌────────▼────────┐
+              │ Signaling Server │
+              │   (WebSocket)    │
+              └────────┬────────┘
+                       │
+┌──────────────────────┼───────────────────────────────────────────┐
+│              ┌───────▼────────┐          ANDROID CLIENT          │
+│              │ WebRTC Client   │                                  │
+│              └───────┬────────┘                                  │
+│         ┌────────────┴────────────┐                              │
+│  ┌──────▼───────┐         ┌───────▼──────┐                       │
+│  │ Video Decoder │         │ Audio Decoder│                       │
+│  │ (MediaCodec)  │         │ (Opus)       │                       │
+│  └──────────────┘         └──────────────┘                       │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📋 Requirements
 
 ### Linux Host
 
-```bash
-# Dependencias de compilación
-sudo apt install -y \
-    build-essential \
-    cmake \
-    pkg-config \
-    libx11-dev \
-    libxcb1-dev \
-    libxcb-shm0-dev \
-    libxcb-randr0-dev \
-    libpipewire-0.3-dev \
-    libpulse-dev \
-    libavcodec-dev \
-    libavformat-dev \
-    libavutil-dev \
-    libswscale-dev \
-    libswresample-dev \
-    libopus-dev \
-    libva-dev \
-    libgio2.0-cil-dev
-```
+| Requirement | Version |
+|-------------|---------|
+| Python | 3.10+ |
+| GTK | 4.0+ |
+| libadwaita | 1.0+ |
+| GStreamer | 1.20+ |
+| PipeWire | 0.3+ |
 
 ### Android Client
 
-- Android Studio Arctic Fox o superior
-- NDK 25 o superior
-- SDK mínimo: API 24 (Android 7.0)
+| Requirement | Version |
+|-------------|---------|
+| Android | 7.0+ (API 24) |
+| Architecture | arm64-v8a, armeabi-v7a |
 
-### Servidor de Señalización
+---
 
-- Go 1.21 o superior
+## 🔧 Building from Source
 
-## 🚀 Compilación
+<details>
+<summary><strong>Linux Host (Python GUI)</strong></summary>
 
-### Linux Host
+```bash
+# Install dependencies (Fedora)
+sudo dnf install python3 python3-gobject gtk4 libadwaita
+
+# Install Python packages
+pip install qrcode pillow websocket-client
+
+# Run directly
+cd linux-gui
+python3 streamlinux_gui.py
+```
+
+</details>
+
+<details>
+<summary><strong>Linux Host (C++ Native - Optional)</strong></summary>
 
 ```bash
 cd linux-host
@@ -103,214 +256,99 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
 ```
 
-Opciones de CMake:
-- `-DENABLE_X11=ON/OFF` - Soporte X11
-- `-DENABLE_WAYLAND=ON/OFF` - Soporte Wayland  
-- `-DENABLE_VAAPI=ON/OFF` - Aceleración VAAPI
-- `-DENABLE_NVENC=ON/OFF` - Aceleración NVIDIA
+</details>
 
-### Cliente Android
+<details>
+<summary><strong>Android Client</strong></summary>
 
 ```bash
 cd android-client
-./gradlew assembleRelease
+./gradlew assembleDebug
+# APK will be in app/build/outputs/apk/debug/
 ```
 
-### Servidor de Señalización
+</details>
+
+<details>
+<summary><strong>Signaling Server</strong></summary>
 
 ```bash
 cd signaling-server
 go build -o signaling-server ./cmd/server
 ```
 
-## 📖 Uso
+</details>
 
-### 1. Iniciar el Servidor de Señalización
+---
 
+## 🐛 Troubleshooting
+
+<details>
+<summary><strong>Screen capture not working on Wayland</strong></summary>
+
+Make sure xdg-desktop-portal is running:
 ```bash
-./signaling-server --port 8080 --mdns
+systemctl --user restart xdg-desktop-portal xdg-desktop-portal-gnome
 ```
 
-### 2. Iniciar el Host Linux
+</details>
 
+<details>
+<summary><strong>No audio capture</strong></summary>
+
+Check PipeWire is running:
 ```bash
-./stream_linux --server ws://localhost:8080/ws --room my-room
+systemctl --user status pipewire
+pw-cli list-objects | grep -i audio
 ```
 
-Opciones disponibles:
-```
---server, -s      URL del servidor de señalización
---room, -r        ID de la sala (auto-generado si no se especifica)
---monitor, -m     Monitor a capturar (0 = primario)
---fps, -f         Frames por segundo (default: 60)
---bitrate, -b     Bitrate de video en kbps (default: 5000)
---quality, -q     Preajuste de calidad: low, medium, high, ultra
---audio           Habilitar captura de audio (default: true)
---hardware        Usar codificación por hardware (default: true)
-```
+</details>
 
-### 3. Conectar desde Android
+<details>
+<summary><strong>Connection issues</strong></summary>
 
-1. Abrir la app StreamLinux
-2. La app descubrirá automáticamente hosts en la red local
-3. Alternativamente, escanear el código QR mostrado por el host
-4. Seleccionar el host para iniciar la transmisión
+1. Ensure both devices are on the same network
+2. Check firewall allows port 54321
+3. Try USB connection as alternative
 
-## 🏗️ Arquitectura
+</details>
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         LINUX HOST                               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
-│  │ Display      │  │ Audio        │  │ Encoder              │   │
-│  │ Backend      │  │ Capture      │  │ (H.264/Opus)         │   │
-│  │ (X11/Wayland)│  │ (PipeWire/   │  │ HW: VAAPI/NVENC/AMF  │   │
-│  │              │  │  PulseAudio) │  │ SW: libx264/libopus  │   │
-│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
-│         │                 │                      │               │
-│         └────────────┬────┴──────────────────────┘               │
-│                      │                                           │
-│              ┌───────▼────────┐                                  │
-│              │ A/V Synchronizer│                                  │
-│              └───────┬────────┘                                  │
-│                      │                                           │
-│              ┌───────▼────────┐                                  │
-│              │ WebRTC Transport│                                  │
-│              └───────┬────────┘                                  │
-└──────────────────────┼───────────────────────────────────────────┘
-                       │ DTLS/SRTP
-                       │
-              ┌────────▼────────┐
-              │ Signaling Server │
-              │   (WebSocket)    │
-              └────────┬────────┘
-                       │
-┌──────────────────────┼───────────────────────────────────────────┐
-│                      │              ANDROID CLIENT               │
-│              ┌───────▼────────┐                                  │
-│              │ WebRTC Client   │                                  │
-│              └───────┬────────┘                                  │
-│                      │                                           │
-│              ┌───────▼────────┐                                  │
-│              │ A/V Synchronizer│                                  │
-│              └───────┬────────┘                                  │
-│                      │                                           │
-│         ┌────────────┴────────────┐                              │
-│         │                         │                              │
-│  ┌──────▼───────┐         ┌───────▼──────┐                       │
-│  │ Video Decoder │         │ Audio Decoder│                       │
-│  │ (MediaCodec)  │         │ (Opus/OpenSL)│                       │
-│  └──────┬───────┘         └───────┬──────┘                       │
-│         │                         │                              │
-│  ┌──────▼───────┐         ┌───────▼──────┐                       │
-│  │ SurfaceView   │         │ AudioTrack   │                       │
-│  └──────────────┘         └──────────────┘                       │
-└──────────────────────────────────────────────────────────────────┘
-```
+---
 
-## 📁 Estructura del Proyecto
+## 📜 License
 
-```
-streamlinux/
-├── linux-host/              # Aplicación host Linux (C++)
-│   ├── include/             # Headers
-│   ├── src/                 # Código fuente
-│   │   ├── capture/         # Backends de captura
-│   │   ├── audio/           # Captura de audio
-│   │   ├── encoding/        # Codificadores
-│   │   ├── sync/            # Sincronización A/V
-│   │   ├── transport/       # WebRTC
-│   │   └── cli/             # Interfaz de línea de comandos
-│   └── CMakeLists.txt
-│
-├── android-client/          # Cliente Android (Kotlin + NDK)
-│   ├── app/
-│   │   └── src/main/
-│   │       ├── java/        # Código Kotlin
-│   │       ├── cpp/         # Código nativo C++
-│   │       └── res/         # Recursos
-│   └── build.gradle.kts
-│
-└── signaling-server/        # Servidor de señalización (Go)
-    ├── cmd/server/          # Punto de entrada
-    └── internal/            # Paquetes internos
-        ├── signaling/       # Lógica de señalización
-        ├── discovery/       # mDNS
-        └── qr/              # Generación de QR
-```
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔧 Configuración
+---
 
-### Archivo de Configuración (Linux Host)
+## 🤝 Contributing
 
-Crear `~/.config/streamlinux/config.toml`:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-```toml
-[video]
-fps = 60
-bitrate = 5000
-preset = "medium"  # ultrafast, superfast, veryfast, faster, fast, medium
-hardware = true
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-[audio]
-enabled = true
-sample_rate = 48000
-channels = 2
+---
 
-[network]
-signaling_server = "ws://localhost:8080/ws"
-stun_server = "stun:stun.l.google.com:19302"
+## 💖 Support
 
-[capture]
-backend = "auto"  # auto, x11, wayland
-monitor = 0
-```
+If you find this project useful, please consider:
+- ⭐ Starring the repository
+- 🐛 Reporting bugs
+- 💡 Suggesting features
+- 🤝 Contributing code
 
-## 🐛 Solución de Problemas
+---
 
-### "No se detecta el backend gráfico"
+<p align="center">
+  Made with ❤️ by <a href="https://github.com/MrVanguardia">MrVanguardia</a>
+</p>
 
-```bash
-# Verificar sesión
-echo $XDG_SESSION_TYPE
-
-# Para X11
-xdpyinfo | head
-
-# Para Wayland
-echo $WAYLAND_DISPLAY
-```
-
-### "Error de codificación de hardware"
-
-```bash
-# Verificar VAAPI
-vainfo
-
-# Verificar NVIDIA
-nvidia-smi
-```
-
-### "Audio no capturado"
-
-```bash
-# Listar dispositivos PipeWire
-pw-cli list-objects
-
-# Listar dispositivos PulseAudio  
-pactl list sources
-```
-
-## 📜 Licencia
-
-Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 🤝 Contribuir
-
-Las contribuciones son bienvenidas. Por favor, abra un issue primero para discutir los cambios que desea realizar.
-
-1. Fork el repositorio
-2. Cree su rama de características (`git checkout -b feature/AmazingFeature`)
-3. Commit sus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abra un Pull Request
+<p align="center">
+  <a href="https://paypal.me/mrvanguardia">
+    <img src="https://img.shields.io/badge/Donate-PayPal-blue.svg" alt="Donate">
+  </a>
+</p>
