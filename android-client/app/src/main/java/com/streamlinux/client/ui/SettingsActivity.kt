@@ -283,7 +283,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "Versión 1.1.2",
+                        "Versión 0.1.0-alpha",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -1,6 +1,6 @@
 Name:           streamlinux
-Version:        1.1.2
-Release:        1%{?dist}
+Version:        0.1.0
+Release:        1.alpha%{?dist}
 Summary:        Stream your Linux screen to Android devices
 
 License:        MIT
