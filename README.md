@@ -6,45 +6,6 @@ StreamLinux permite transmitir la pantalla y el audio de un sistema Linux a disp
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Android-green.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
-
-> ⚠️ **VERSIÓN EXPERIMENTAL** - Esta es una versión en desarrollo activo.
-
-## 📥 Instalación Rápida
-
-### Linux (Fedora, Ubuntu, Mint, Arch, openSUSE)
-
-```bash
-# 1. Descargar
-wget https://github.com/MrVanguardia/streamlinux/releases/download/v1.0.0/streamlinux-1.0.0-linux-universal.tar.gz
-
-# 2. Extraer
-tar -xzf streamlinux-1.0.0-linux-universal.tar.gz
-
-# 3. Entrar a la carpeta
-cd streamlinux
-
-# 4. Instalar
-sudo bash install.sh
-```
-
-**⚠️ IMPORTANTE:** Usar `sudo bash install.sh` (no `sudo ./install.sh`)
-
-### Android
-
-Descarga el APK desde [Releases](https://github.com/MrVanguardia/streamlinux/releases/tag/v1.0.0)
-
-### Si hay problemas en Linux:
-```bash
-# Diagnóstico
-bash install.sh diagnose
-
-# Instalar dependencias Python manualmente
-pip3 install --user pillow qrcode websocket-client
-
-# Para Ubuntu/Mint (GTK4)
-sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
-```
 
 ## 🎯 Características
 

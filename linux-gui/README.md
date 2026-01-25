@@ -2,35 +2,6 @@
 
 Aplicación de escritorio GTK4 para controlar el streaming de pantalla desde Linux a dispositivos Android.
 
-## 🚀 Instalación Rápida (Todas las distros)
-
-```bash
-# 1. Descargar
-wget https://github.com/MrVanguardia/streamlinux/releases/download/v1.0.0/streamlinux-1.0.0-linux-universal.tar.gz
-
-# 2. Extraer
-tar -xzf streamlinux-1.0.0-linux-universal.tar.gz
-
-# 3. Entrar a la carpeta (se llama "streamlinux")
-cd streamlinux
-
-# 4. Instalar (IMPORTANTE: usar "bash", no "./")
-sudo bash install.sh
-```
-
-**⚠️ IMPORTANTE:** 
-- La carpeta se llama `streamlinux`, NO `streamlinux-1.0.0-linux`
-- Usar `sudo bash install.sh`, NO `sudo ./install.sh`
-
-### Si hay problemas:
-```bash
-# Diagnosticar
-bash install.sh diagnose
-
-# Instalar dependencias manualmente
-pip3 install --user pillow qrcode websocket-client
-```
-
 ## Características
 
 - 🖥️ **Interfaz moderna** con GTK4 y libadwaita
