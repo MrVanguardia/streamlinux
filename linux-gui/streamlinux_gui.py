@@ -1443,7 +1443,7 @@ class MainWindow(Adw.ApplicationWindow):
         about.add_credit_section("Tecnologías", ["GTK4", "libadwaita", "WebRTC", "GStreamer", "PipeWire"])
         about.add_credit_section("Desarrollador", ["MrVanguardia - Vanguardia Studio"])
         about.add_link("🌐 Página Web", "https://vanguardiastudio.us/")
-        about.add_link("💖 Donar con PayPal", "https://www.paypal.com/donate/?hosted_button_id=YOUR_PAYPAL_BUTTON_ID")
+        about.add_link("💖 Donar con PayPal", "https://www.paypal.com/invoice/p/#ENPBS57FGYS3EB9J")
         about.add_link("⭐ GitHub", "https://github.com/MrVanguardia/streamlinux")
         about.present()
 
