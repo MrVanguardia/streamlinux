@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.streamlinux.host</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>StreamLinux</name>
+  <summary>Stream your Linux screen to Android devices</summary>
+  
+  <description>
+    <p>
+      StreamLinux allows you to stream your Linux desktop screen and audio to Android 
+      devices over your local network with ultra-low latency using WebRTC technology.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Low latency screen streaming using WebRTC</li>
+      <li>Hardware-accelerated video encoding (VAAPI, NVENC)</li>
+      <li>High-quality audio streaming with Opus codec</li>
+      <li>Support for both X11 and Wayland desktops</li>
+      <li>QR code for easy mobile connection</li>
+      <li>Modern GTK4/libadwaita interface</li>
+    </ul>
+  </description>
+  
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window showing streaming controls</caption>
+      <image>https://github.com/streamlinux/screenshots/main.png</image>
+    </screenshot>
+  </screenshots>
+  
+  <url type="homepage">https://github.com/streamlinux</url>
+  <url type="bugtracker">https://github.com/streamlinux/issues</url>
+  
+  <provides>
+    <binary>streamlinux-gui</binary>
+  </provides>
+  
+  <releases>
+    <release version="1.0.0" date="2026-01-01">
+      <description>
+        <p>Initial release with core functionality:</p>
+        <ul>
+          <li>Screen capture for X11 and Wayland</li>
+          <li>WebRTC streaming to Android</li>
+          <li>QR code connection</li>
+          <li>Hardware encoding support</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  
+  <content_rating type="oars-1.1"/>
+  
+  <developer_name>StreamLinux Team</developer_name>
+  
+  <categories>
+    <category>Network</category>
+    <category>Video</category>
+    <category>Utility</category>
+  </categories>
+  
+  <keywords>
+    <keyword>stream</keyword>
+    <keyword>screen</keyword>
+    <keyword>share</keyword>
+    <keyword>android</keyword>
+    <keyword>webrtc</keyword>
+    <keyword>mirror</keyword>
+  </keywords>
+</component>

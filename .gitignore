@@ -1,0 +1,34 @@
+# Build artifacts
+*.pyc
+__pycache__/
+*.o
+*.so
+build/
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Android
+android-client/.gradle/
+android-client/app/build/
+android-client/build/
+android-client/local.properties
+*.iml
+
+# Go
+signaling-server/signaling-server
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+*.bak

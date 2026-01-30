@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App -->
+    <string name="app_name">StreamLinux</string>
+    <string name="app_description">Streaming de pantalla de baja latencia desde Linux a Android</string>
+
+    <!-- Main Screen -->
+    <string name="title_available_hosts">Hosts Disponibles</string>
+    <string name="subtitle_connect">Conecta con tu ordenador Linux</string>
+    <string name="action_refresh">Actualizar</string>
+    <string name="action_settings">Ajustes</string>
+    <string name="action_scan_qr">Escanear QR</string>
+    <string name="action_manual_connect">Conexión Manual</string>
+    <string name="scan_qr">Conexión Rápida</string>
+    <string name="scan_qr_desc">Escanea el código QR del host</string>
+    <string name="manual_connect">Manual</string>
+    <string name="manual_connect_desc">Introducir dirección IP</string>
+    <string name="back">Atrás</string>
+
+    <!-- Discovery -->
+    <string name="searching_hosts">Buscando hosts…</string>
+    <string name="no_hosts_found">No se encontraron hosts</string>
+    <string name="no_hosts_hint">Asegúrate de que StreamLinux esté ejecutándose en tu ordenador</string>
+    <string name="hosts_found">%d host(s) encontrado(s)</string>
+    <string name="host_online">En línea</string>
+    <string name="last_seen">Visto por última vez %s</string>
+
+    <!-- Connection -->
+    <string name="connecting">Conectando…</string>
+    <string name="connected">Conectado</string>
+    <string name="disconnected">Desconectado</string>
+    <string name="connection_failed">Error de conexión</string>
+    <string name="reconnecting">Reconectando…</string>
+    <string name="tap_to_connect">Toca para conectar</string>
+
+    <!-- Manual Connect -->
+    <string name="title_manual_connect">Conexión Manual</string>
+    <string name="label_ip_address">Dirección IP</string>
+    <string name="label_port">Puerto</string>
+    <string name="hint_ip_address">192.168.1.100</string>
+    <string name="action_connect">Conectar</string>
+    <string name="tip_find_ip">Encuentra tu IP ejecutando \'hostname -I\' en tu ordenador Linux</string>
+    <string name="enter_host_details">Introduce los datos de tu host Linux para conectar directamente</string>
+    <string name="helpful_tip">Consejo útil</string>
+
+    <!-- QR Scan -->
+    <string name="title_scan_qr">Escanear Código QR</string>
+    <string name="scan_qr_code">Escanear Código QR</string>
+    <string name="hint_scan_qr">Apunta tu cámara al código QR mostrado en tu ordenador Linux</string>
+    <string name="permission_camera_required">Se requiere permiso de cámara para escanear códigos QR</string>
+    <string name="camera_permission_required">Permiso de cámara requerido</string>
+    <string name="invalid_qr_code">Código QR inválido</string>
+    <string name="scan_qr_title">Posiciona el Código QR</string>
+    <string name="scan_qr_subtitle">Alinea el código dentro del marco</string>
+
+    <!-- Settings -->
+    <string name="title_settings">Ajustes</string>
+    <string name="section_video">Video</string>
+    <string name="section_network">Red</string>
+    <string name="section_appearance">Apariencia</string>
+    <string name="section_developer">Desarrollador</string>
+    <string name="section_about">Acerca de</string>
+
+    <string name="setting_prefer_h265">Preferir H.265 (HEVC)</string>
+    <string name="setting_prefer_h265_desc">Mejor calidad al mismo bitrate</string>
+    <string name="setting_max_bitrate">Bitrate Máximo</string>
+    <string name="setting_auto_reconnect">Reconexión Automática</string>
+    <string name="setting_auto_reconnect_desc">Reconectar automáticamente si se pierde la conexión</string>
+    <string name="setting_low_latency">Modo Baja Latencia</string>
+    <string name="setting_low_latency_desc">Priorizar latencia sobre estabilidad</string>
+    <string name="setting_buffer_size">Tamaño del Buffer</string>
+    <string name="setting_theme">Tema</string>
+    <string name="setting_show_stats">Mostrar Estadísticas</string>
+    <string name="setting_show_stats_desc">Mostrar FPS, bitrate y latencia en el stream</string>
+    <string name="setting_hardware_decode">Decodificación por Hardware</string>
+    <string name="setting_hardware_decode_desc">Usar GPU para decodificar video</string>
+    <string name="setting_debug_logs">Registro de Depuración</string>
+    <string name="setting_debug_logs_desc">Habilitar logs detallados para solución de problemas</string>
+
+    <!-- Options -->
+    <string name="option_auto">Automático</string>
+    <string name="option_low">Bajo</string>
+    <string name="option_normal">Normal</string>
+    <string name="option_high">Alto</string>
+    <string name="option_system">Sistema</string>
+    <string name="option_light">Claro</string>
+    <string name="option_dark">Oscuro</string>
+
+    <!-- Stream -->
+    <string name="stream_stats">Estadísticas del Stream</string>
+    <string name="stream_stats_fps">FPS: %d</string>
+    <string name="stream_stats_bitrate">Bitrate: %.1f Mbps</string>
+    <string name="stream_stats_latency">Latencia: %d ms</string>
+    <string name="stream_stats_resolution">%dx%d</string>
+    <string name="resolution">Resolución</string>
+    <string name="fps">FPS</string>
+    <string name="bitrate">Bitrate</string>
+    <string name="latency">Latencia</string>
+    <string name="packets_lost">Paquetes Perdidos</string>
+    <string name="audio_on">Audio Activado</string>
+    <string name="audio_off">Audio Desactivado</string>
+    <string name="fullscreen">Pantalla Completa</string>
+    <string name="disconnect">Desconectar</string>
+    <string name="disconnect_title">¿Finalizar Stream?</string>
+    <string name="disconnect_message">¿Estás seguro de que quieres desconectarte de este host?</string>
+    <string name="cancel">Cancelar</string>
+
+    <!-- Errors -->
+    <string name="error_invalid_address">Por favor introduce una dirección IP válida</string>
+    <string name="error_invalid_port">Por favor introduce un número de puerto válido</string>
+    <string name="error_connection_timeout">Tiempo de conexión agotado</string>
+    <string name="error_host_unreachable">Host inaccesible</string>
+    <string name="error_invalid_host">Dirección de host inválida</string>
+    <string name="error_connection_failed">Error de conexión</string>
+
+    <!-- About -->
+    <string name="about_version">Versión %s</string>
+    <string name="about_description">Streaming de pantalla de baja latencia\ndesde Linux a Android</string>
+    <string name="version_info">Versión 0.1.0-alpha</string>
+    
+    <!-- Settings UI -->
+    <string name="settings_back">Atrás</string>
+    <string name="section_display">Pantalla</string>
+    <string name="section_data">Datos</string>
+    <string name="setting_resolution">Resolución</string>
+    <string name="setting_keep_screen_on">Mantener Pantalla Encendida</string>
+    <string name="setting_keep_screen_on_desc">Evitar que la pantalla se apague durante el streaming</string>
+    <string name="setting_immersive_mode">Modo Inmersivo</string>
+    <string name="setting_immersive_mode_desc">Ocultar barras del sistema durante el streaming</string>
+    <string name="current_buffer">Buffer actual: %dms</string>
+    <string name="reset_settings">Restablecer Ajustes</string>
+    <string name="reset_settings_desc">Volver a los valores predeterminados</string>
+    <string name="reset_dialog_title">¿Restablecer Ajustes?</string>
+    <string name="reset_dialog_message">Todos los ajustes se restaurarán a sus valores predeterminados.</string>
+    <string name="reset">Restablecer</string>
+    <string name="settings_reset_success">Ajustes restablecidos correctamente</string>
+    
+    <!-- Language -->
+    <string name="section_language">Idioma</string>
+    <string name="setting_language">Idioma</string>
+    <string name="setting_language_desc">Seleccionar idioma de la aplicación</string>
+    <string name="language_system">Predeterminado del Sistema</string>
+    <string name="language_en">English</string>
+    <string name="language_es">Español</string>
+</resources>

@@ -1,0 +1,19 @@
+# StreamLinux GUI Dependencies
+# Install with: pip install -r requirements.txt
+
+# QR Code generation
+qrcode[pil]>=7.4
+Pillow>=10.0
+
+# WebSocket for signaling
+websocket-client>=1.6.0
+
+# PyGObject is usually installed system-wide via package manager:
+# Fedora: sudo dnf install python3-gobject gtk4 libadwaita
+# Ubuntu: sudo apt install python3-gi gir1.2-gtk-4.0 gir1.2-adw-1
+# Arch: sudo pacman -S python-gobject gtk4 libadwaita
+
+# GStreamer Python bindings (system packages):
+# Fedora: sudo dnf install gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free python3-gstreamer1
+# Ubuntu: sudo apt install gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad python3-gst-1.0
+# Arch: sudo pacman -S gst-plugins-base gst-plugins-good gst-plugins-bad gst-python
