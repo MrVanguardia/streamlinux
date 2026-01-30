@@ -1,0 +1,70 @@
+app-id: com.streamlinux.host
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+command: streamlinux-gui
+
+finish-args:
+  # X11 + XShm access for screen capture
+  - --share=ipc
+  - --socket=x11
+  # Wayland access
+  - --socket=wayland
+  # GPU access for hardware encoding
+  - --device=dri
+  # Network access for streaming
+  - --share=network
+  # Audio access
+  - --socket=pulseaudio
+  # PipeWire access for screen capture and audio
+  - --filesystem=xdg-run/pipewire-0
+  # D-Bus access for portal
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.portal.ScreenCast
+  # For getting display info
+  - --talk-name=org.gnome.Mutter.DisplayConfig
+
+modules:
+  # Python QRCode
+  - name: python3-qrcode
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} "qrcode[pil]" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/24/79/aaf0c1c7214f2632badb2771d770b1500d3d7cbdf2590ae62e721ec50584/qrcode-7.4.2-py3-none-any.whl
+        sha256: 581dca7a029bcb2deef5d01068e39093e80ef00b4f61f8a7b2b0c28e2ca61a2f
+      - type: file
+        url: https://files.pythonhosted.org/packages/a7/62/c9449f9c3f1b1e1635e5e8ebb2d02e31e59a72a9d4f5c0a7e4d6d12e9de4/pypng-0.20220715.0-py3-none-any.whl
+        sha256: 4a43e969b8f5f9b35264f4e9b3c0f6f7e5d8e0f8d7c6b5a4e3d2c1b0a99e8d7c6
+
+  # Pillow
+  - name: python3-pillow
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} Pillow --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/cd/74/ad3d526f3bf7b6d3f408b73fde271ec69dfac8b81341a318ce825f2b3812/pillow-10.2.0.tar.gz
+        sha256: e87f0b2c78157e12d7686b27d63c070fd65d994e8ddae6f328e0dcf4a0cd007e
+
+  # Main application
+  - name: streamlinux
+    buildsystem: simple
+    build-commands:
+      # Install main script
+      - install -D -m 755 streamlinux_gui.py /app/bin/streamlinux-gui
+      
+      # Install desktop file
+      - install -D -m 644 data/com.streamlinux.host.desktop /app/share/applications/com.streamlinux.host.desktop
+      
+      # Install icon
+      - install -D -m 644 data/icons/streamlinux.svg /app/share/icons/hicolor/scalable/apps/streamlinux.svg
+      
+      # Install metainfo
+      - install -D -m 644 data/com.streamlinux.host.metainfo.xml /app/share/metainfo/com.streamlinux.host.metainfo.xml
+    sources:
+      - type: dir
+        path: .

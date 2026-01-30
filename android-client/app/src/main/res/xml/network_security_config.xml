@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Configuration for StreamLinux Android Client
+    
+    Security Policy:
+    - Cleartext traffic allowed for local LAN connections (required for WebSocket)
+    - This is safe because connections are only to local network hosts
+    - Production: Consider implementing TLS for all connections
+-->
+<network-security-config>
+    <!-- Allow cleartext for local connections (WebSocket requires this) -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Debug builds: Allow user-installed CA certs for testing -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors -->
+    <color name="primary">#6C63FF</color>
+    <color name="primary_dark">#5B52E0</color>
+    <color name="primary_light">#8B85FF</color>
+    <color name="on_primary">#FFFFFF</color>
+
+    <!-- Secondary Colors -->
+    <color name="secondary">#00D9FF</color>
+    <color name="secondary_dark">#00B8D4</color>
+    <color name="on_secondary">#000000</color>
+
+    <!-- Tertiary / Success -->
+    <color name="tertiary">#4ADE80</color>
+    <color name="on_tertiary">#000000</color>
+
+    <!-- Error -->
+    <color name="error">#FF6B6B</color>
+    <color name="on_error">#000000</color>
+
+    <!-- Accent / Legacy -->
+    <color name="accent">@color/secondary</color>
+
+    <!-- Basic colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <!-- Dark Theme Backgrounds -->
+    <color name="background_dark">#0D0D14</color>
+    <color name="surface_dark">#16161F</color>
+    <color name="surface_variant_dark">#1E1E2D</color>
+    <color name="on_background_dark">#F5F5F7</color>
+    <color name="on_surface_dark">#F5F5F7</color>
+
+    <!-- Light Theme Backgrounds -->
+    <color name="background_light">#FCFCFF</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="surface_variant_light">#F3F0F4</color>
+    <color name="on_background_light">#1C1B1F</color>
+    <color name="on_surface_light">#1C1B1F</color>
+
+    <!-- Gradients -->
+    <color name="gradient_start">#6C63FF</color>
+    <color name="gradient_end">#00D9FF</color>
+
+    <!-- Status Colors -->
+    <color name="online">#4ADE80</color>
+    <color name="offline">#94A3B8</color>
+    <color name="connecting">#FBBF24</color>
+</resources>

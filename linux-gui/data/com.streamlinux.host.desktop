@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=StreamLinux
+Comment=Stream your Linux screen to Android devices
+GenericName=Screen Streaming
+Exec=streamlinux
+Icon=streamlinux
+Terminal=false
+Type=Application
+Categories=Network;Video;AudioVideo;Utility;
+Keywords=stream;screen;share;android;webrtc;
+StartupWMClass=streamlinux
+StartupNotify=true

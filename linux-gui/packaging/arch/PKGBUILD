@@ -1,0 +1,75 @@
+# Maintainer: Vanguardia Studio <contact@vanguardiastudio.us>
+# StreamLinux - Stream your Linux desktop to Android
+
+pkgname=streamlinux
+pkgver=0.2.0
+pkgrel=1
+pkgdesc="Real-time screen streaming from Linux to Android using WebRTC"
+arch=('x86_64')
+url="https://github.com/MrVanguardia/streamlinux"
+license=('MIT')
+depends=(
+    'python'
+    'python-gobject'
+    'gtk4'
+    'libadwaita'
+    'gst-plugins-bad'
+    'gst-plugins-good'
+    'gst-plugins-base'
+    'gstreamer'
+    'pipewire'
+    'pipewire-gstreamer'
+    'qrencode'
+)
+optdepends=(
+    'gst-plugin-va: Hardware video acceleration (VAAPI)'
+    'libva-intel-driver: Intel VAAPI driver'
+    'libva-mesa-driver: AMD/Intel VAAPI driver'
+)
+makedepends=('go')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/MrVanguardia/streamlinux/archive/refs/tags/v${pkgver}-alpha.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${srcdir}/streamlinux-${pkgver}-alpha/signaling-server"
+    go build -ldflags="-s -w" -o signaling-server ./cmd/server/
+}
+
+package() {
+    cd "${srcdir}/streamlinux-${pkgver}-alpha"
+    
+    # Create directories
+    install -dm755 "${pkgdir}/usr/bin"
+    install -dm755 "${pkgdir}/usr/share/streamlinux"
+    install -dm755 "${pkgdir}/usr/lib/streamlinux"
+    install -dm755 "${pkgdir}/usr/share/applications"
+    install -dm755 "${pkgdir}/usr/share/icons/hicolor/scalable/apps"
+    install -dm755 "${pkgdir}/usr/share/licenses/${pkgname}"
+    
+    # Install Python files
+    install -Dm644 linux-gui/streamlinux_gui.py "${pkgdir}/usr/share/streamlinux/"
+    install -Dm644 linux-gui/webrtc_streamer.py "${pkgdir}/usr/share/streamlinux/"
+    install -Dm644 linux-gui/portal_screencast.py "${pkgdir}/usr/share/streamlinux/"
+    install -Dm644 linux-gui/security.py "${pkgdir}/usr/share/streamlinux/"
+    install -Dm644 linux-gui/usb_manager.py "${pkgdir}/usr/share/streamlinux/"
+    install -Dm644 linux-gui/i18n.py "${pkgdir}/usr/share/streamlinux/"
+    install -Dm644 linux-gui/message_crypto.py "${pkgdir}/usr/share/streamlinux/"
+    
+    # Install signaling server
+    install -Dm755 signaling-server/signaling-server "${pkgdir}/usr/lib/streamlinux/"
+    
+    # Install desktop file and icon
+    install -Dm644 linux-gui/data/com.streamlinux.host.desktop "${pkgdir}/usr/share/applications/"
+    install -Dm644 linux-gui/data/icons/streamlinux.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/"
+    
+    # Install license
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/"
+    
+    # Create launcher script
+    cat > "${pkgdir}/usr/bin/streamlinux" << 'EOF'
+#!/bin/bash
+cd /usr/share/streamlinux
+exec python3 streamlinux_gui.py "$@"
+EOF
+    chmod 755 "${pkgdir}/usr/bin/streamlinux"
+}
