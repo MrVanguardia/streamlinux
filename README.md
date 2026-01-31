@@ -251,15 +251,32 @@ Linux Host                              Android Client
 
 ### Thanks to these amazing people! 
 
-<a href="https://github.com/MrVanguardia">
-  <img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/MrVanguardia?v=4&h=100&w=100&fit=cover&mask=circle&maxage=7d" width="100" height="100"/>
-</a>
-
-**[MrVanguardia](https://github.com/MrVanguardia)**
-
- Code •  Design •  Packaging •  Deployment
-
-*Creator & Lead Developer*
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/MrVanguardia">
+        <img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/MrVanguardia?v=4&h=100&w=100&fit=cover&mask=circle&maxage=7d" width="100" height="100"/>
+      </a>
+      <br/>
+      <b><a href="https://github.com/MrVanguardia">MrVanguardia</a></b>
+      <br/>
+      💻 Code • 🎨 Design • 📦 Packaging • 🚀 Deployment
+      <br/>
+      <i>Creator & Lead Developer</i>
+    </td>
+    <td align="center">
+      <a href="https://github.com/ST-2">
+        <img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/ST-2?v=4&h=100&w=100&fit=cover&mask=circle&maxage=7d" width="100" height="100"/>
+      </a>
+      <br/>
+      <b><a href="https://github.com/ST-2">ST-2</a></b>
+      <br/>
+      🔒 Security • 🧪 Testing • 🛡️ Privacy
+      <br/>
+      <i>Security & QA Specialist</i>
+    </td>
+  </tr>
+</table>
 
 </div>
 
