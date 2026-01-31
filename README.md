@@ -248,7 +248,7 @@ Linux Host                              Android Client
 ### Thanks to these amazing people! 🎉
 
 <a href="https://github.com/MrVanguardia">
-  <img src="https://avatars.githubusercontent.com/MrVanguardia?v=4" width="100" height="100" style="border-radius:50%"/>
+  <img src="https://images.weserv.nl/?url=avatars.githubusercontent.com/MrVanguardia?v=4&h=100&w=100&fit=cover&mask=circle&maxage=7d" width="100" height="100"/>
 </a>
 
 **[MrVanguardia](https://github.com/MrVanguardia)**
