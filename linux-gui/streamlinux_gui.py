@@ -1640,7 +1640,7 @@ class MainWindow(Adw.ApplicationWindow):
             application_name="StreamLinux",
             application_icon="video-display",
             developer_name="Vanguardia Studio",
-            version="0.1.0-alpha",
+            version="0.2.0-alpha",
             copyright="© 2024 Vanguardia Studio",
             license_type=Gtk.License.MIT_X11,
             website="https://vanguardiastudio.us/",

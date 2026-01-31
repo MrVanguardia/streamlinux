@@ -3,39 +3,27 @@
     Network Security Configuration for StreamLinux Android Client
     
     Security Policy:
-    - Cleartext traffic allowed for local LAN connections (required for WebSocket)
-    - This is safe because connections are only to local network hosts
-    - Production: Consider implementing TLS for all connections
+    - Cleartext traffic allowed for local LAN connections (required for WebSocket signaling)
+    - This app ONLY communicates with local network hosts (signaling server on LAN)
+    - No external/internet servers are contacted for streaming functionality
+    
+    Security Note (vuln-0003):
+    - We allow cleartext for LAN because the signaling server runs locally
+    - WebRTC data channels use DTLS encryption regardless of signaling transport
+    - Future: Implement WSS (WebSocket Secure) for signaling as well
 -->
 <network-security-config>
-    <!-- Security fix vuln-0003: Disable cleartext by default -->
-    <base-config cleartextTrafficPermitted="false">
+    <!-- 
+        Allow cleartext for local network communication.
+        StreamLinux connects to a signaling server on the same LAN.
+        Android's domain-config doesn't support CIDR notation for IPs,
+        so we validate private IPs in code (SignalingClient.kt).
+    -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    
-    <!-- Allow cleartext ONLY for local/private networks (RFC 1918) -->
-    <!-- 10.0.0.0/8 -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.0.0</domain>
-    </domain-config>
-    
-    <!-- 172.16.0.0/12 -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">172.16.0.0</domain>
-    </domain-config>
-    
-    <!-- 192.168.0.0/16 -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">192.168.0.0</domain>
-    </domain-config>
-    
-    <!-- Localhost -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-    </domain-config>
     
     <!-- Debug builds: Allow user-installed CA certs for testing -->
     <debug-overrides>

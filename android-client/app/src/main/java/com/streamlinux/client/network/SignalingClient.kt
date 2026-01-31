@@ -133,10 +133,20 @@ class SignalingClient(
 
     /**
      * Connect to signaling server
+     * Security: Only allows connections to local/private network addresses
      */
     fun connect(host: HostInfo) {
         if (_state.value == SignalingState.CONNECTING || _state.value == SignalingState.CONNECTED) {
             Log.w(TAG, "Already connected or connecting")
+            return
+        }
+
+        // Security check: Only allow connections to local/private IPs
+        // This prevents SSRF attacks and ensures we only connect to LAN hosts
+        if (!isLocalAddress(host.address)) {
+            Log.e(TAG, "SECURITY: Blocked connection to non-local address: ${host.address}")
+            _state.value = SignalingState.ERROR
+            onError?.invoke("Security: Only local network connections allowed")
             return
         }
 
@@ -149,12 +159,10 @@ class SignalingClient(
                 // Security: Use secure client with proper TLS configuration
                 client = createSecureClient(host)
 
-                // Use wss:// for TLS connections, ws:// only for local LAN
-                val protocol = if (isLocalAddress(host.address)) "ws" else "wss"
-                val url = "$protocol://${host.address}:${host.port}$SIGNALING_PATH"
-                Log.e(TAG, "CONNECTING to signaling server: $url")
-                Log.e(TAG, "HOST INFO: name=${host.name}, address=${host.address}, port=${host.port}")
-                Log.e(TAG, "FULL TOKEN FROM QR: ${host.token ?: "NULL"}")
+                // Use ws:// for local LAN (cleartext is safe on private network)
+                val url = "ws://${host.address}:${host.port}$SIGNALING_PATH"
+                Log.d(TAG, "Connecting to local signaling server: $url")
+                Log.d(TAG, "Host: ${host.name}, address: ${host.address}, port: ${host.port}")
 
                 val requestBuilder = Request.Builder()
                     .url(url)
@@ -164,7 +172,7 @@ class SignalingClient(
                 // Security: Add Authorization header if token is available
                 if (host.token != null && host.token.isNotEmpty()) {
                     requestBuilder.addHeader("Authorization", "Bearer ${host.token}")
-                    Log.e(TAG, "ADDED AUTH TOKEN: ${host.token.take(8)}...")
+                    Log.d(TAG, "Auth token added")
                 } else {
                     Log.w(TAG, "WARNING: No token available for authentication!")
                 }
