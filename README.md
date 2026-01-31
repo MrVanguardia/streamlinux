@@ -87,6 +87,8 @@ StreamLinux is built using industry-standard open source technologies:
 | **WebSocket** | Signaling transport |
 | **HMAC-SHA256** | Token authentication |
 
+[![Security Policy](https://img.shields.io/badge/Security-Policy-red?style=flat-square&logo=shield)](SECURITY.md)
+
 ---
 
 ## Downloads
