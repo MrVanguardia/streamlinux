@@ -241,9 +241,37 @@ Linux Host                              Android Client
 
 ---
 
+## Contributors
+
+Thanks to these wonderful people who have contributed to StreamLinux:
+
+<!-- ALL-CONTRIBUTORS-LIST:START -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="150px">
+        <a href="https://github.com/MrVanguardia">
+          <img src="https://avatars.githubusercontent.com/MrVanguardia?v=4&s=100" width="100px;" alt="MrVanguardia" style="border-radius:50%;"/>
+          <br />
+          <sub><b>MrVanguardia</b></sub>
+        </a>
+        <br />
+        <sub>💻 🎨 📦 🚀</sub>
+        <br />
+        <sub><i>Creator & Lead Developer</i></sub>
+      </td>
+    </tr>
+  </tbody>
+</table>
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+---
+
 ## Contributing
 
-Contributions are welcome. Please open an issue first to discuss proposed changes.
+Contributions are welcome! Please open an issue first to discuss proposed changes.
+
+If you'd like to contribute, check out our [open issues](https://github.com/MrVanguardia/streamlinux/issues) or propose a new feature.
 
 ---
 
@@ -256,5 +284,9 @@ MIT License. See [LICENSE](LICENSE) for details.
 <div align="center">
 
 **StreamLinux** is an open source project by [Vanguardia Studio](https://vanguardiastudio.us)
+
+<br />
+
+Made with ❤️ in Dominican Republic 🇩🇴
 
 </div>
