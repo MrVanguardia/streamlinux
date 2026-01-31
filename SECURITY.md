@@ -13,7 +13,25 @@ By downloading, installing, or using StreamLinux, you acknowledge and accept the
 
 ---
 
-## 🔒 Security Features
+## � Active Development
+
+StreamLinux is under **active development** and receives frequent updates:
+
+- 🚀 **Continuous Improvements** - We are constantly working on new features, performance optimizations, and bug fixes
+- 🛡️ **Security Updates** - Security vulnerabilities are treated as high priority and patched as soon as possible
+- 🔧 **Regular Releases** - Expect frequent updates with improvements and fixes
+- 📢 **Community Driven** - User feedback helps shape the direction of the project
+
+**We recommend always using the latest version** to benefit from the newest security patches and improvements.
+
+To stay updated:
+- ⭐ Star the repository on GitHub
+- 👁️ Watch releases to get notified of new versions
+- 📬 Follow our announcements
+
+---
+
+## �🔒 Security Features
 
 StreamLinux implements several security measures to protect your data:
 
