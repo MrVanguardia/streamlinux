@@ -98,6 +98,8 @@ StreamLinux is built using industry-standard open source technologies:
 | Linux (Fedora/RHEL) | RPM | [streamlinux-0.2.0-1.alpha.fc43.x86_64.rpm](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.0-alpha/streamlinux-0.2.0-1.alpha.fc43.x86_64.rpm) |
 | Android | APK | [streamlinux-0.2.0-debug.apk](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.0-alpha/streamlinux-0.2.0-debug.apk) |
 
+[![Download](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge&logo=github)](https://github.com/MrVanguardia/streamlinux/releases)
+
 **Requirements:**
 
 | Linux Host | Android Client |
