@@ -243,23 +243,21 @@ Linux Host                              Android Client
 
 ## ✨ Contributors
 
-Thanks to these wonderful people who have contributed to StreamLinux:
-
-## ✨ Contributors
-
-Thanks to these wonderful people who have contributed to StreamLinux:
-
-<!-- ALL-CONTRIBUTORS-LIST:START -->
 <div align="center">
 
-| <img src="https://avatars.githubusercontent.com/MrVanguardia?v=4&s=150" width="120" height="120" style="border-radius:50%"/> |
-|:---:|
-| **[MrVanguardia](https://github.com/MrVanguardia)** |
-| 💻 🎨 📦 🚀 |
-| *Creator & Lead Developer* |
+### Thanks to these amazing people! 🎉
+
+<a href="https://github.com/MrVanguardia">
+  <img src="https://avatars.githubusercontent.com/MrVanguardia?v=4" width="100" height="100" style="border-radius:50%"/>
+</a>
+
+**[MrVanguardia](https://github.com/MrVanguardia)**
+
+💻 Code • 🎨 Design • 📦 Packaging • 🚀 Deployment
+
+*Creator & Lead Developer*
 
 </div>
-<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ---
 
