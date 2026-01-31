@@ -24,8 +24,27 @@ void ControlChannel::set_handler(IControlHandler* handler) noexcept {
     m_handler = handler;
 }
 
+void ControlChannel::set_authorized_peer(const std::string& peer_id) {
+    m_authorized_peer_id = peer_id;
+}
+
+bool ControlChannel::is_peer_authorized(const std::string& sender_id) const {
+    // Security fix vuln-0002: Verify sender is authorized
+    if (m_authorized_peer_id.empty()) {
+        return false;  // No peer authorized yet
+    }
+    return sender_id == m_authorized_peer_id;
+}
+
 void ControlChannel::process_message(const ControlMessage& msg) {
     if (!m_handler) return;
+    
+    // Security fix vuln-0002: Authenticate control messages
+    if (!msg.sender_id.empty() && !is_peer_authorized(msg.sender_id)) {
+        // Reject unauthorized control messages
+        send_error("Unauthorized: control message rejected");
+        return;
+    }
     
     switch (msg.type) {
         case ControlMessageType::Pause:

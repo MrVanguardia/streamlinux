@@ -81,6 +81,19 @@ public:
     void set_handler(IControlHandler* handler) noexcept;
     
     /**
+     * @brief Set authorized peer ID (security fix vuln-0002)
+     * @param peer_id The peer ID authorized to send control messages
+     */
+    void set_authorized_peer(const std::string& peer_id);
+    
+    /**
+     * @brief Check if a peer is authorized (security fix vuln-0002)
+     * @param sender_id The sender's peer ID
+     * @return true if authorized
+     */
+    [[nodiscard]] bool is_peer_authorized(const std::string& sender_id) const;
+    
+    /**
      * @brief Process incoming control message
      */
     void process_message(const ControlMessage& msg);
@@ -120,6 +133,9 @@ private:
     
     IWebRTCTransport* m_transport = nullptr;
     IControlHandler* m_handler = nullptr;
+    
+    // Security: Authorized peer tracking (vuln-0002 fix)
+    std::string m_authorized_peer_id;
     
     // Ping/pong tracking
     uint64_t m_last_ping_sequence = 0;

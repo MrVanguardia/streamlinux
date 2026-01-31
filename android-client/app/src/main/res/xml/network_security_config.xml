@@ -8,13 +8,34 @@
     - Production: Consider implementing TLS for all connections
 -->
 <network-security-config>
-    <!-- Allow cleartext for local connections (WebSocket requires this) -->
-    <base-config cleartextTrafficPermitted="true">
+    <!-- Security fix vuln-0003: Disable cleartext by default -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
+    
+    <!-- Allow cleartext ONLY for local/private networks (RFC 1918) -->
+    <!-- 10.0.0.0/8 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.0.0</domain>
+    </domain-config>
+    
+    <!-- 172.16.0.0/12 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">172.16.0.0</domain>
+    </domain-config>
+    
+    <!-- 192.168.0.0/16 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.0.0</domain>
+    </domain-config>
+    
+    <!-- Localhost -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
     
     <!-- Debug builds: Allow user-installed CA certs for testing -->
     <debug-overrides>

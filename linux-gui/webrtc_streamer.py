@@ -111,17 +111,31 @@ def validate_stun_server(stun_server: str) -> str:
     if not re.match(pattern, stun_server):
         raise ValueError(f"Invalid STUN server format: {stun_server}")
     
-    # Extraer host y validar que no sea IP privada (SSRF protection)
+    # Extraer host y validar que no sea IP privada (SSRF protection - vuln-0001 fix)
     try:
         host_part = stun_server.split('://')[1].split(':')[0]
+        
+        # También bloquear hostnames conocidos de metadata
+        blocked_hostnames = ['metadata', 'metadata.google.internal', 'instance-data']
+        if host_part.lower() in blocked_hostnames:
+            raise ValueError(f"STUN server cannot use cloud metadata hostname: {host_part}")
+        
+        # Verificar si es una IP
         try:
             ip = ipaddress.ip_address(host_part)
+            # Validación de IP privada - NO capturar este error
             if ip.is_private or ip.is_loopback or ip.is_link_local:
                 raise ValueError(f"STUN server cannot use private/local IP: {host_part}")
-        except ValueError:
-            pass  # Es un hostname, no una IP - OK
+        except ValueError as e:
+            # Si el error es de seguridad (IP privada), re-lanzarlo
+            if "private" in str(e) or "local" in str(e) or "metadata" in str(e):
+                raise
+            # Si es porque no es una IP válida (es hostname), está OK
+            pass
+    except ValueError:
+        raise  # Re-lanzar errores de seguridad
     except Exception:
-        pass
+        pass  # Otros errores de parsing están OK
     
     return stun_server
 

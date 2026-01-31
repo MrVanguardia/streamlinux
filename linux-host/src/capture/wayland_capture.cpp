@@ -588,11 +588,28 @@ void WaylandCapture::process_pipewire_frame() {
         return;
     }
     
+    // Security fix vuln-0004: Validate frame dimensions
+    uint32_t width = m_video_format.info.raw.size.width;
+    uint32_t height = m_video_format.info.raw.size.height;
+    
+    if (width == 0 || height == 0 || 
+        width > MAX_FRAME_DIMENSION || height > MAX_FRAME_DIMENSION) {
+        pw_stream_queue_buffer(m_pw_stream, b);
+        return;  // Reject invalid dimensions
+    }
+    
+    // Security fix vuln-0004: Validate buffer size
+    size_t data_size = buf->datas[0].chunk->size;
+    if (data_size == 0 || data_size > MAX_FRAME_SIZE) {
+        pw_stream_queue_buffer(m_pw_stream, b);
+        return;  // Reject oversized frames
+    }
+    
     // Create video frame
     VideoFrame frame;
     frame.pts = get_monotonic_pts();
-    frame.width = m_video_format.info.raw.size.width;
-    frame.height = m_video_format.info.raw.size.height;
+    frame.width = width;
+    frame.height = height;
     frame.stride = buf->datas[0].chunk->stride;
     
     // Determine pixel format

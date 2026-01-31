@@ -1,0 +1,5 @@
+﻿id,title,severity,timestamp,file
+vuln-0001,SSRF via STUN Server with Logic Error Bypassing Private IP Restrictions,HIGH,1/31/26 7:10,vulnerabilities/vuln-0001.md
+vuln-0002,Control Channel Authentication Bypass - Unauthorized Stream Control Remains Unfixed,HIGH,1/31/26 7:11,vulnerabilities/vuln-0002.md
+vuln-0003,Android Cleartext Traffic Still Permitted Despite Security Configuration Override,HIGH,1/31/26 7:13,vulnerabilities/vuln-0003.md
+vuln-0004,Wayland Capture Buffer Overflow and Dimension Validation Not Enforced,MEDIUM,1/31/26 7:14,vulnerabilities/vuln-0004.md
