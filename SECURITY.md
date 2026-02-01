@@ -13,7 +13,7 @@ By downloading, installing, or using StreamLinux, you acknowledge and accept the
 
 ---
 
-## � Active Development
+## Active Development
 
 StreamLinux is under **active development** and receives frequent updates:
 
@@ -114,11 +114,15 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 
 ---
 
+<div align="center">
+
 ## 📬 Contact
 
 For security concerns: **studiovanguardia3@gmail.com**
 
 For general questions: Open a [GitHub Discussion](https://github.com/MrVanguardia/streamlinux/discussions)
+
+</div>
 
 ---
 
