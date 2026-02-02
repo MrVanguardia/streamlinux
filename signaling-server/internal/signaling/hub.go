@@ -260,7 +260,7 @@ func (h *Hub) RegisterToken(token string, expiry time.Duration) {
 	h.tokenMu.Lock()
 	defer h.tokenMu.Unlock()
 	h.validTokens[token] = time.Now().Add(expiry)
-	h.logger.Info("Token registered", zap.String("token", token[:8]+"..."))
+	h.logger.Info("Token registered", zap.Int("token_length", len(token)))
 }
 
 // ValidateToken checks if a token is valid
@@ -730,7 +730,7 @@ func HandleWebSocket(hub *Hub, w http.ResponseWriter, r *http.Request, logger *z
 		if !hub.ValidateToken(token) {
 			logger.Warn("Invalid token rejected",
 				zap.String("remote", remoteAddr),
-				zap.String("token", token[:min(8, len(token))]+"..."))
+				zap.Int("token_length", len(token)))
 			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
 			return
 		}
