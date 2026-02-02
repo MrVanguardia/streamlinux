@@ -63,25 +63,8 @@ class SignalingClient(
             .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
             .pingInterval(PING_INTERVAL, TimeUnit.SECONDS)
         
-        // For local/LAN connections, allow self-signed certificates
-        if (isLocalAddress(host.address)) {
-            Log.d(TAG, "Local connection - allowing self-signed certificates")
-            val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
-                override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-                override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-                override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-            })
-            
-            val sslContext = SSLContext.getInstance("TLS")
-            sslContext.init(null, trustAllCerts, java.security.SecureRandom())
-            builder.sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
-            builder.hostnameVerifier { _, _ -> true }
-        }
-        // For non-local connections, use system CA + optional pinning
-        // Add certificate pinning for known production servers here:
-        // .certificatePinner(CertificatePinner.Builder()
-        //     .add("your-server.com", "sha256/AAAA...")
-        //     .build())
+        // Use system default TrustManager for all connections
+        // This ensures proper certificate validation
         
         return builder.build()
     }
