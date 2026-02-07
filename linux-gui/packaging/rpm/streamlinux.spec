@@ -1,5 +1,5 @@
 Name:           streamlinux
-Version:        0.2.0
+Version:        0.2.3
 Release:        1.alpha%{?dist}
 Summary:        Stream your Linux screen to Android devices with WebRTC
 
@@ -148,6 +148,11 @@ update-desktop-database %{_datadir}/applications &>/dev/null || :
 %{_userunitdir}/streamlinux-signaling.service
 
 %changelog
+* Sat Feb 07 2026 Vanguardia Studio <contact@vanguardiastudio.us> - 0.2.3-1.alpha
+- Audio: Fixed per-application audio capture detection
+- Audio: Added support for selecting any application for audio capture
+- Audio: Dynamic sink-input discovery by binary name
+
 * Wed Jan 29 2026 Vanguardia Studio <contact@vanguardiastudio.us> - 0.2.0-1.alpha
 - Security: Fixed 14 vulnerabilities from penetration test
 - Security: TLS 1.2/1.3 enforced with modern ciphers

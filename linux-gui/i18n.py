@@ -80,7 +80,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'audio_microphone': 'Microphone',
         'audio_both': 'Both',
         'audio_none': 'None',
+        'audio_application': 'Application',
         'audio_bitrate': 'Audio Bitrate',
+        'audio_select_app': 'Select Application',
+        'audio_select_app_desc': 'Choose application to capture audio from',
+        'audio_no_apps': 'No applications playing audio',
+        'audio_refresh_apps': 'Refresh List',
         
         # Advanced
         'encoder': 'Encoder',
@@ -402,7 +407,12 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         'audio_microphone': 'Micrófono',
         'audio_both': 'Ambos',
         'audio_none': 'Ninguno',
+        'audio_application': 'Aplicación',
         'audio_bitrate': 'Tasa de bits de Audio',
+        'audio_select_app': 'Seleccionar Aplicación',
+        'audio_select_app_desc': 'Elige la aplicación de la que capturar audio',
+        'audio_no_apps': 'No hay aplicaciones reproduciendo audio',
+        'audio_refresh_apps': 'Actualizar Lista',
         
         # Advanced
         'encoder': 'Codificador',

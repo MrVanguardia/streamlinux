@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # StreamLinux RPM Build Script
-# Version: 0.2.0-alpha
+# Version: 0.2.3-alpha
 #
 # Prerequisites:
 #   sudo dnf install rpm-build rpmdevtools python3-devel desktop-file-utils libappstream-glib golang
@@ -9,7 +9,7 @@
 
 set -e
 
-VERSION="0.2.0"
+VERSION="0.2.3"
 RELEASE="alpha"
 PACKAGE_NAME="streamlinux"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

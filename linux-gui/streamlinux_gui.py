@@ -104,9 +104,11 @@ class AppConfig:
         
         # Audio settings
         'audio_enabled': True,
-        'audio_source': 'system',  # system, microphone, both, none
+        'audio_source': 'system',  # system, microphone, both, application, none
         'audio_codec': 'opus',     # opus, aac
-        'audio_bitrate': 320,      # kbps
+        'audio_bitrate': 510,      # kbps (510 = max Opus quality)
+        'audio_app_id': None,      # PulseAudio sink-input index for application audio
+        'audio_app_binary': None,  # Binary name to find sink-input dynamically
         
         # Network settings
         'port': 54321,
@@ -231,6 +233,161 @@ class AppConfig:
     def all(self) -> dict:
         """Get all configuration values"""
         return dict(self._config)
+
+
+def get_audio_applications(include_all_clients: bool = True) -> list:
+    """
+    Get list of applications for audio capture.
+    
+    Args:
+        include_all_clients: If True, include all PulseAudio/PipeWire clients,
+                            not just those currently playing audio.
+    
+    Returns list of dicts with 'id', 'name', 'app_name', 'is_playing', and 'client_id' keys.
+    Works with both PulseAudio and PipeWire in any locale.
+    """
+    apps = []
+    playing_binaries = set()  # Track which apps are playing audio
+    
+    # Force English output for consistent parsing
+    env = os.environ.copy()
+    env['LC_ALL'] = 'C'
+    env['LANG'] = 'C'
+    
+    try:
+        # First, get sink-inputs (apps currently playing audio)
+        result = subprocess.run(
+            ['pactl', 'list', 'sink-inputs'],
+            capture_output=True, text=True, timeout=5,
+            env=env
+        )
+        
+        if result.returncode == 0:
+            current_app = {}
+            in_properties = False
+            
+            for line in result.stdout.splitlines():
+                stripped = line.strip()
+                
+                # New sink-input entry
+                if stripped.startswith('Sink Input #'):
+                    if current_app.get('id'):
+                        current_app['is_playing'] = True
+                        apps.append(current_app)
+                        if current_app.get('binary'):
+                            playing_binaries.add(current_app['binary'])
+                    sink_id = stripped.split('#')[1].strip()
+                    current_app = {'id': sink_id, 'name': '', 'app_name': '', 'is_playing': True, 'binary': ''}
+                    in_properties = False
+                
+                elif stripped == 'Properties:':
+                    in_properties = True
+                
+                elif in_properties and '=' in stripped:
+                    key, _, value = stripped.partition('=')
+                    key = key.strip()
+                    value = value.strip().strip('"')
+                    
+                    if key == 'application.name':
+                        current_app['app_name'] = value
+                        if not current_app['name']:
+                            current_app['name'] = value
+                    elif key == 'media.name' and value and value != 'Playback':
+                        current_app['name'] = value
+                    elif key == 'application.process.binary':
+                        current_app['binary'] = value
+                        if not current_app.get('app_name'):
+                            current_app['app_name'] = value
+                    elif key == 'application.icon_name':
+                        current_app['icon'] = value
+            
+            # Don't forget the last one
+            if current_app.get('id'):
+                current_app['is_playing'] = True
+                apps.append(current_app)
+                if current_app.get('binary'):
+                    playing_binaries.add(current_app['binary'])
+        
+        # Now get all clients (applications connected to PulseAudio/PipeWire)
+        if include_all_clients:
+            result = subprocess.run(
+                ['pactl', 'list', 'clients'],
+                capture_output=True, text=True, timeout=5,
+                env=env
+            )
+            
+            if result.returncode == 0:
+                # System/internal processes to filter out
+                system_processes = {
+                    'pipewire', 'wireplumber', 'pulseaudio', 'pactl', 'pw-cli',
+                    'uresourced', 'gsd-media-keys', 'xdg-desktop-portal',
+                    'gnome-shell', 'kwin', 'plasmashell', 'pipewire-pulse'
+                }
+                
+                current_client = {}
+                in_properties = False
+                
+                for line in result.stdout.splitlines():
+                    stripped = line.strip()
+                    
+                    if stripped.startswith('Client #'):
+                        if current_client.get('client_id') and current_client.get('binary'):
+                            # Only add if not a system process and not already playing
+                            binary = current_client.get('binary', '').lower()
+                            if binary not in system_processes and binary not in playing_binaries:
+                                current_client['is_playing'] = False
+                                current_client['id'] = f"client_{current_client['client_id']}"
+                                apps.append(current_client)
+                        
+                        client_id = stripped.split('#')[1].strip()
+                        current_client = {'client_id': client_id, 'name': '', 'app_name': '', 'binary': ''}
+                        in_properties = False
+                    
+                    elif stripped == 'Properties:':
+                        in_properties = True
+                    
+                    elif in_properties and '=' in stripped:
+                        key, _, value = stripped.partition('=')
+                        key = key.strip()
+                        value = value.strip().strip('"')
+                        
+                        if key == 'application.name':
+                            current_client['app_name'] = value
+                            if not current_client['name']:
+                                current_client['name'] = value
+                        elif key == 'application.process.binary':
+                            current_client['binary'] = value
+                            if not current_client.get('app_name'):
+                                current_client['app_name'] = value
+                
+                # Don't forget the last client
+                if current_client.get('client_id') and current_client.get('binary'):
+                    binary = current_client.get('binary', '').lower()
+                    if binary not in system_processes and binary not in playing_binaries:
+                        current_client['is_playing'] = False
+                        current_client['id'] = f"client_{current_client['client_id']}"
+                        apps.append(current_client)
+        
+        # Clean up - set display names
+        for app in apps:
+            if not app.get('name') and app.get('app_name'):
+                app['name'] = app['app_name']
+            elif not app.get('name') and app.get('binary'):
+                app['name'] = app['binary'].title()
+            elif not app.get('name'):
+                app['name'] = f"App #{app.get('id', '?')}"
+            
+            # Create display string with playing indicator
+            playing_indicator = "🔊 " if app.get('is_playing') else "   "
+            if app.get('app_name') and app['app_name'] != app['name']:
+                app['display'] = f"{playing_indicator}{app['app_name']}: {app['name']}"
+            else:
+                app['display'] = f"{playing_indicator}{app['name']}"
+                
+    except Exception as e:
+        print(f"Error getting audio applications: {e}")
+    
+    return apps
 
 
 class StreamState(Enum):
@@ -1304,6 +1461,8 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Get capture settings
         capture_screen = self.config.get('capture_screen')
+        audio_app_id = self.config.get('audio_app_id')
+        audio_app_binary = self.config.get('audio_app_binary')
         
         # Create streamer config
         config = StreamConfig(
@@ -1314,6 +1473,8 @@ class MainWindow(Adw.ApplicationWindow):
             audio=audio_enabled,
             audio_source=audio_source,
             audio_bitrate=audio_bitrate,
+            audio_app_id=audio_app_id,
+            audio_app_binary=audio_app_binary,
             hw_encoding=hw_encoding,
             capture_method=capture_method,
             capture_screen=capture_screen
@@ -1640,8 +1801,8 @@ class MainWindow(Adw.ApplicationWindow):
             application_name="StreamLinux",
             application_icon="video-display",
             developer_name="Vanguardia Studio",
-            version="0.2.0-alpha",
-            copyright="© 2024 Vanguardia Studio",
+            version="0.2.3-alpha",
+            copyright="© 2026 Vanguardia Studio",
             license_type=Gtk.License.MIT_X11,
             website="https://vanguardiastudio.us/",
             issue_url="https://github.com/MrVanguardia/streamlinux/issues",
@@ -1867,13 +2028,39 @@ class PreferencesDialog(Adw.PreferencesWindow):
             _('audio_system'),
             _('audio_microphone'),
             _('audio_both'),
+            _('audio_application'),
             _('audio_none')
         ]))
         source_val = self.config.get('audio_source')
-        source_idx = {'system': 0, 'microphone': 1, 'both': 2, 'none': 3}.get(source_val, 0)
+        source_idx = {'system': 0, 'microphone': 1, 'both': 2, 'application': 3, 'none': 4}.get(source_val, 0)
         self.audio_source_row.set_selected(source_idx)
         self.audio_source_row.connect("notify::selected", self._on_audio_source_changed)
         capture_group.add(self.audio_source_row)
+        
+        # Application selection group (shown only when 'application' is selected)
+        self.app_audio_group = Adw.PreferencesGroup()
+        self.app_audio_group.set_title(_('audio_select_app'))
+        self.app_audio_group.set_description(_('audio_select_app_desc'))
+        page.add(self.app_audio_group)
+        
+        # Application selector row
+        self.audio_app_row = Adw.ComboRow()
+        self.audio_app_row.set_title(_('audio_select_app'))
+        self.audio_apps_list = []  # Store app data
+        self._refresh_audio_apps()
+        self.audio_app_row.connect("notify::selected", self._on_audio_app_changed)
+        self.app_audio_group.add(self.audio_app_row)
+        
+        # Refresh button
+        refresh_row = Adw.ActionRow()
+        refresh_row.set_title(_('audio_refresh_apps'))
+        refresh_row.set_activatable(True)
+        refresh_row.add_suffix(Gtk.Image.new_from_icon_name("view-refresh-symbolic"))
+        refresh_row.connect("activated", lambda r: self._refresh_audio_apps())
+        self.app_audio_group.add(refresh_row)
+        
+        # Show/hide app selection based on current source
+        self.app_audio_group.set_visible(source_val == 'application')
         
         # Quality group
         quality_group = Adw.PreferencesGroup()
@@ -1894,24 +2081,60 @@ class PreferencesDialog(Adw.PreferencesWindow):
         self.audio_bitrate_row = Adw.ComboRow()
         self.audio_bitrate_row.set_title(_('pref_quality'))
         self.audio_bitrate_row.set_model(Gtk.StringList.new([
+            "Ultra (510 kbps)",
             _('quality_high') + " (320 kbps)",
             _('quality_medium') + " (192 kbps)",
             _('quality_low') + " (128 kbps)"
         ]))
         bitrate_val = self.config.get('audio_bitrate')
-        bitrate_idx = {320: 0, 192: 1, 128: 2}.get(bitrate_val, 0)
+        bitrate_idx = {510: 0, 320: 1, 192: 2, 128: 3}.get(bitrate_val, 0)
         self.audio_bitrate_row.set_selected(bitrate_idx)
         self.audio_bitrate_row.connect("notify::selected", self._on_audio_bitrate_changed)
         quality_group.add(self.audio_bitrate_row)
         
         return page
     
+    def _refresh_audio_apps(self):
+        """Refresh the list of applications playing audio"""
+        self.audio_apps_list = get_audio_applications()
+        
+        if self.audio_apps_list:
+            app_names = [app['display'] for app in self.audio_apps_list]
+        else:
+            app_names = [_('audio_no_apps')]
+        
+        self.audio_app_row.set_model(Gtk.StringList.new(app_names))
+        
+        # Try to select the previously saved app
+        saved_app_id = self.config.get('audio_app_id')
+        if saved_app_id:
+            for i, app in enumerate(self.audio_apps_list):
+                if app['id'] == saved_app_id:
+                    self.audio_app_row.set_selected(i)
+                    break
+    
+    def _on_audio_app_changed(self, row, param):
+        """Handle audio application selection change"""
+        idx = row.get_selected()
+        if self.audio_apps_list and idx < len(self.audio_apps_list):
+            app = self.audio_apps_list[idx]
+            app_id = app['id']
+            app_binary = app.get('binary', None)
+            self.config.set('audio_app_id', app_id)
+            self.config.set('audio_app_binary', app_binary)
+    
     def _on_audio_source_changed(self, row, param):
         idx = row.get_selected()
-        source_map = {0: 'system', 1: 'microphone', 2: 'both', 3: 'none'}
-        self.config.set('audio_source', source_map.get(idx, 'system'))
+        source_map = {0: 'system', 1: 'microphone', 2: 'both', 3: 'application', 4: 'none'}
+        source = source_map.get(idx, 'system')
+        self.config.set('audio_source', source)
         # Also update audio_enabled based on selection
-        self.config.set('audio_enabled', idx != 3)
+        self.config.set('audio_enabled', idx != 4)
+        # Show/hide app selection group
+        self.app_audio_group.set_visible(source == 'application')
+        # Refresh app list when application mode is selected
+        if source == 'application':
+            self._refresh_audio_apps()
     
     def _on_audio_codec_changed(self, row, param):
         idx = row.get_selected()
@@ -1920,8 +2143,8 @@ class PreferencesDialog(Adw.PreferencesWindow):
     
     def _on_audio_bitrate_changed(self, row, param):
         idx = row.get_selected()
-        bitrate_map = {0: 320, 1: 192, 2: 128}
-        self.config.set('audio_bitrate', bitrate_map.get(idx, 320))
+        bitrate_map = {0: 510, 1: 320, 2: 192, 3: 128}
+        self.config.set('audio_bitrate', bitrate_map.get(idx, 510))
     
     def create_network_page(self):
         """Create network settings page"""

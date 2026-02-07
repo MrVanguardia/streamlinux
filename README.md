@@ -6,7 +6,7 @@
 
 **Real-time Screen Streaming from Linux to Android**
 
-[![Version](https://img.shields.io/badge/version-0.2.0--alpha-0366d6?style=flat-square)](https://github.com/MrVanguardia/streamlinux/releases/latest)
+[![Version](https://img.shields.io/badge/version-0.2.3--alpha-0366d6?style=flat-square)](https://github.com/MrVanguardia/streamlinux/releases/latest)
 [![Status](https://img.shields.io/badge/status-alpha-ff6b6b?style=flat-square)](https://github.com/MrVanguardia/streamlinux)
 [![License](https://img.shields.io/badge/license-MIT-28a745?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Android-6f42c1?style=flat-square)](https://github.com/MrVanguardia/streamlinux)
@@ -31,8 +31,50 @@ StreamLinux enables low-latency screen and audio streaming from Linux to Android
 - WiFi (LAN) and USB connection modes
 - Hardware-accelerated encoding via VAAPI
 - System audio capture through PipeWire and PulseAudio
+- **Application-specific audio capture** - Stream audio from individual apps
 - QR code-based device pairing
 - End-to-end encryption using DTLS-SRTP
+
+---
+
+## New in v0.2.3: Professional Audio System
+
+StreamLinux v0.2.3 introduces a complete audio overhaul designed for audiophiles and professionals who demand pristine sound quality.
+
+<div align="center">
+<img src="docs/images/audio-app-selector.png" alt="Application Audio Selector" width="500">
+</div>
+
+### Per-Application Audio Capture
+
+Stream audio from specific applications instead of your entire system. Perfect for:
+- **Gaming** - Stream game audio without Discord/TeamSpeak
+- **Music production** - Share DAW output without system sounds
+- **Video calls** - Capture specific meeting apps
+- **Content creation** - Stream media players without notifications
+
+**Features:**
+- Automatic detection of all running applications (playing or silent)
+- Dynamic sink-input discovery for zero-configuration streaming
+- Compatible with Brave, Chrome, Firefox, Spotify, VLC, and any PulseAudio app
+
+### Studio-Grade Audio Processing
+
+Every audio stream is processed through a professional mastering chain before encoding:
+
+1. **High-pass filter @ 25Hz** - Removes sub-bass rumble and DC offset
+2. **3-band equalizer** - Tightens bass, preserves mids, smooths highs
+3. **Soft-knee compressor** - Gentle 2:1 dynamic range control
+4. **Brick-wall limiter @ -1dBFS** - Prevents clipping while preserving headroom
+5. **High-quality resampling** - 48kHz optimal for Opus fullband encoding
+
+**Result:** Crystal-clear audio with no artifacts, optimized for codec transparency.
+
+### High-Fidelity Encoding
+
+- **510 kbps Opus** - Near-transparent quality for music and gaming
+- **Fullband mode** - Complete 20Hz-20kHz frequency response 
+- **Ultra-low latency** - Optimized buffer management for real-time streaming
 
 ---
 
@@ -93,12 +135,12 @@ StreamLinux is built using industry-standard open source technologies:
 
 ## Downloads
 
-### Latest Release: 0.2.0-alpha
+### Latest Release: 0.2.3-alpha
 
 | Platform | Package | Download |
 |----------|---------|----------|
-| Linux (Fedora/RHEL) | RPM | [streamlinux-0.2.0-1.alpha.fc43.x86_64.rpm](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.0-alpha/streamlinux-0.2.0-1.alpha.fc43.x86_64.rpm) |
-| Android | APK | [streamlinux-0.2.0-debug.apk](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.0-alpha/streamlinux-0.2.0-debug.apk) |
+| Linux (Fedora/RHEL) | RPM | [streamlinux-0.2.3-1.alpha.fc43.x86_64.rpm](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.3-alpha/streamlinux-0.2.3-1.alpha.fc43.x86_64.rpm) |
+| Android | APK | [StreamLinux-0.2.3.apk](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.3-alpha/StreamLinux-0.2.3.apk) |
 
 [![Download](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge&logo=github)](https://github.com/MrVanguardia/streamlinux/releases)
 

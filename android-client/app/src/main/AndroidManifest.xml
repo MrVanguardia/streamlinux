@@ -17,6 +17,9 @@
     <!-- Keep screen on -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    
+    <!-- Audio settings control -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 

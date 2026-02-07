@@ -1,7 +1,10 @@
 package com.streamlinux.client.ui
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
 import android.widget.Toast
@@ -67,6 +70,8 @@ class StreamActivity : ComponentActivity() {
     private var surfaceViewRenderer: SurfaceViewRenderer? = null
     private var previousAudioMode: Int = AudioManager.MODE_NORMAL
     private var previousSpeakerphone: Boolean = false
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -138,14 +143,20 @@ class StreamActivity : ComponentActivity() {
     
     /**
      * Automatically configure optimal audio output:
+     * - Request audio focus for media playback
      * - If headphones/bluetooth connected -> use them
      * - If no headphones -> use speaker (loudspeaker)
+     * Audio will play during screen recording because we use STREAM_MUSIC with proper focus
      */
     private fun setupOptimalAudioOutput() {
         try {
             // Save previous state to restore later
             previousAudioMode = audioManager.mode
             previousSpeakerphone = audioManager.isSpeakerphoneOn
+            
+            // Request audio focus - this is critical for audio to play properly
+            // and to continue during screen recording
+            requestAudioFocus()
             
             // Check if headphones or bluetooth are connected
             val hasWiredHeadset = audioManager.isWiredHeadsetOn
@@ -161,7 +172,9 @@ class StreamActivity : ComponentActivity() {
                 android.util.Log.d("StreamActivity", "External audio detected: wired=$hasWiredHeadset, bt_a2dp=$hasBluetoothA2dp, bt_sco=$hasBluetoothSco")
             } else {
                 // No external audio - force speaker for loud playback
-                audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
+                // Using MODE_NORMAL instead of MODE_IN_COMMUNICATION for better compatibility
+                // with screen recording
+                audioManager.mode = AudioManager.MODE_NORMAL
                 audioManager.isSpeakerphoneOn = true
                 android.util.Log.d("StreamActivity", "No external audio - using speaker")
             }
@@ -180,9 +193,99 @@ class StreamActivity : ComponentActivity() {
                 android.util.Log.d("StreamActivity", "Volume boosted to 70%")
             }
             
-            android.util.Log.d("StreamActivity", "Audio configured: mode=${audioManager.mode}, speaker=${audioManager.isSpeakerphoneOn}")
+            android.util.Log.d("StreamActivity", "Audio configured: mode=${audioManager.mode}, speaker=${audioManager.isSpeakerphoneOn}, focus=$hasAudioFocus")
         } catch (e: Exception) {
             android.util.Log.e("StreamActivity", "Failed to setup audio output", e)
+        }
+    }
+    
+    /**
+     * Request audio focus from the system.
+     * This is essential for:
+     * - Audio to play properly while other apps are in background
+     * - Audio to be captured during screen recording
+     * - Proper ducking/pausing of other audio sources
+     */
+    private fun requestAudioFocus() {
+        if (hasAudioFocus) return
+        
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // Android 8.0+ uses AudioFocusRequest
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                    .build()
+                
+                audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(audioAttributes)
+                    .setAcceptsDelayedFocusGain(true)
+                    .setWillPauseWhenDucked(false)
+                    .setOnAudioFocusChangeListener { focusChange ->
+                        handleAudioFocusChange(focusChange)
+                    }
+                    .build()
+                
+                val result = audioManager.requestAudioFocus(audioFocusRequest!!)
+                hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+                android.util.Log.d("StreamActivity", "Audio focus request (O+): granted=$hasAudioFocus")
+            } else {
+                // Legacy audio focus request
+                @Suppress("DEPRECATION")
+                val result = audioManager.requestAudioFocus(
+                    { focusChange -> handleAudioFocusChange(focusChange) },
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN
+                )
+                hasAudioFocus = (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
+                android.util.Log.d("StreamActivity", "Audio focus request (legacy): granted=$hasAudioFocus")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("StreamActivity", "Failed to request audio focus", e)
+        }
+    }
+    
+    /**
+     * Handle audio focus changes from other apps
+     */
+    private fun handleAudioFocusChange(focusChange: Int) {
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                hasAudioFocus = true
+                android.util.Log.d("StreamActivity", "Audio focus gained")
+            }
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                hasAudioFocus = false
+                android.util.Log.d("StreamActivity", "Audio focus lost permanently")
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                // Temporary loss (e.g., phone call) - we can continue playing at lower volume
+                android.util.Log.d("StreamActivity", "Audio focus lost temporarily")
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // Can duck - continue playing at lower volume
+                android.util.Log.d("StreamActivity", "Audio focus: should duck")
+            }
+        }
+    }
+    
+    /**
+     * Release audio focus
+     */
+    private fun releaseAudioFocus() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let {
+                    audioManager.abandonAudioFocusRequest(it)
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.abandonAudioFocus(null)
+            }
+            hasAudioFocus = false
+            android.util.Log.d("StreamActivity", "Audio focus released")
+        } catch (e: Exception) {
+            android.util.Log.e("StreamActivity", "Failed to release audio focus", e)
         }
     }
     
@@ -191,6 +294,9 @@ class StreamActivity : ComponentActivity() {
      */
     private fun restoreAudioSettings() {
         try {
+            // Release audio focus first
+            releaseAudioFocus()
+            // Then restore previous audio mode
             audioManager.mode = previousAudioMode
             audioManager.isSpeakerphoneOn = previousSpeakerphone
             android.util.Log.d("StreamActivity", "Audio settings restored")
@@ -209,11 +315,12 @@ class StreamActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         webRTCClient.pause()
+        // Don't release audio focus on pause - user may be multitasking
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Restore audio settings before destroying
+        // Restore audio settings and release focus before destroying
         restoreAudioSettings()
         surfaceViewRenderer?.release()
         webRTCClient.release()

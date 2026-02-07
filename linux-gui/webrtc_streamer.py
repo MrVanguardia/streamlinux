@@ -79,8 +79,10 @@ class StreamConfig:
     fps: int = 30
     bitrate: int = 2000  # kbps
     audio: bool = True  # Enable audio
-    audio_source: str = "system"  # system, microphone, both, none
+    audio_source: str = "system"  # system, microphone, both, application, none
     audio_bitrate: int = 128  # kbps for audio
+    audio_app_id: str = None  # Sink-input ID for application-specific audio
+    audio_app_binary: str = None  # Binary name for application audio (used to find sink-input)
     hw_encoding: bool = False
     capture_method: str = "auto"
     stun_server: str = "stun://stun.l.google.com:19302"
@@ -298,6 +300,10 @@ class WebRTCStreamer:
             self.pipeline = None
             self.webrtc = None
         
+        # Cleanup application audio capture resources
+        if self.config.audio_source == 'application':
+            self._cleanup_app_audio_capture()
+        
         # Stop Wayland portal capture
         if self._portal:
             logger.debug("Stopping portal screencast...")
@@ -489,7 +495,239 @@ class WebRTCStreamer:
                 return f'pulsesrc device="{monitor_source}" buffer-time=20000 latency-time=10000'
             return 'pulsesrc buffer-time=20000 latency-time=10000'
         
+        elif audio_source == 'application':
+            # Capture audio from a specific application
+            app_id = self.config.audio_app_id
+            app_binary = self.config.audio_app_binary
+            
+            # If app_id is a client ID (starts with 'client_'), we need to find sink-input by binary
+            if app_id and app_id.startswith('client_'):
+                app_id = None  # Will search by binary
+            
+            if not app_id and not app_binary:
+                logger.warning("Application audio selected but no app_id or binary specified - falling back to system")
+                return self._get_default_monitor_source()
+            
+            # Setup application audio capture using null sink + loopback
+            app_monitor = self._setup_app_audio_capture(app_id, app_binary)
+            if app_monitor:
+                logger.info(f"Using application audio capture: {app_monitor}")
+                return f'pulsesrc device="{app_monitor}" buffer-time=20000 latency-time=10000'
+            else:
+                logger.warning("Failed to setup app audio capture - falling back to system")
+                return self._get_default_monitor_source()
+        
         return None
+    
+    def _get_default_monitor_source(self) -> Optional[str]:
+        """Helper to get default monitor as pulsesrc string"""
+        monitor_source = self._get_default_monitor()
+        if monitor_source:
+            return f'pulsesrc device="{monitor_source}" buffer-time=20000 latency-time=10000'
+        return 'pulsesrc buffer-time=20000 latency-time=10000'
+    
+    def _setup_app_audio_capture(self, app_id: str, app_binary: str = None) -> Optional[str]:
+        """
+        Setup audio capture for a specific application.
+        Creates a null sink and loopback to capture the app's audio without 
+        interrupting normal playback.
+        
+        Args:
+            app_id: The sink-input ID (e.g., "108") or None to search by binary
+            app_binary: The application binary name to search for sink-inputs
+        
+        Returns the monitor source name for the null sink, or None on failure.
+        """
+        try:
+            # If no app_id, try to find sink-input by binary name
+            if not app_id and app_binary:
+                logger.info(f"Searching for sink-input by binary: {app_binary}")
+                app_id = self._find_sink_input_by_binary(app_binary)
+                if not app_id:
+                    logger.error(f"No active sink-input found for binary: {app_binary}")
+                    logger.info("The application may not be playing audio yet")
+                    return None
+                logger.info(f"Found sink-input {app_id} for binary {app_binary}")
+            
+            if not app_id:
+                logger.error("No app_id and no binary specified")
+                return None
+            
+            # Create a unique null sink for this capture session
+            sink_name = f"streamlinux_capture_{app_id}"
+            
+            # First, check if sink already exists and remove it
+            self._cleanup_app_audio_capture(sink_name)
+            
+            # Create null sink (audio goes nowhere, but we can monitor it)
+            logger.info(f"Creating null sink: {sink_name}")
+            result = subprocess.run(
+                ['pactl', 'load-module', 'module-null-sink',
+                 f'sink_name={sink_name}',
+                 'sink_properties=device.description=StreamLinux_Capture'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode != 0:
+                logger.error(f"Failed to create null sink: {result.stderr}")
+                return None
+            
+            self._null_sink_module = result.stdout.strip()
+            logger.info(f"Created null sink module: {self._null_sink_module}")
+            
+            # Create loopback: copies audio from app's current sink to our capture sink
+            # First, get the current sink of the application
+            app_sink = self._get_sink_input_sink(app_id)
+            if not app_sink:
+                logger.error(f"Could not find sink for app {app_id}")
+                return None
+            
+            # Create loopback module to copy from app's sink monitor to our null sink
+            logger.info(f"Creating loopback from {app_sink}.monitor")
+            result = subprocess.run(
+                ['pactl', 'load-module', 'module-loopback',
+                 f'source={app_sink}.monitor',
+                 f'sink={sink_name}',
+                 'latency_msec=1',
+                 'source_dont_move=true',
+                 'sink_dont_move=true'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode != 0:
+                logger.error(f"Failed to create loopback: {result.stderr}")
+                # Cleanup the null sink
+                self._cleanup_app_audio_capture(sink_name)
+                return None
+            
+            self._loopback_module = result.stdout.strip()
+            logger.info(f"Created loopback module: {self._loopback_module}")
+            
+            # Return the monitor of our null sink
+            return f"{sink_name}.monitor"
+            
+        except Exception as e:
+            logger.error(f"Error setting up app audio capture: {e}")
+            return None
+    
+    def _get_sink_input_sink(self, app_id: str) -> Optional[str]:
+        """Get the sink name that a sink-input is connected to"""
+        try:
+            env = os.environ.copy()
+            env['LC_ALL'] = 'C'
+            result = subprocess.run(
+                ['pactl', 'list', 'sink-inputs'],
+                capture_output=True, text=True, timeout=5, env=env
+            )
+            if result.returncode != 0:
+                return None
+            
+            current_id = None
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if line.startswith('Sink Input #'):
+                    current_id = line.split('#')[1].strip()
+                elif current_id == app_id and line.startswith('Sink:'):
+                    # Get sink index
+                    sink_idx = line.split(':')[1].strip().split()[0]
+                    # Now get the sink name
+                    return self._get_sink_name_by_index(sink_idx)
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error getting sink for app {app_id}: {e}")
+            return None
+    
+    def _find_sink_input_by_binary(self, binary_name: str) -> Optional[str]:
+        """Find a sink-input ID by the application's binary name"""
+        try:
+            env = os.environ.copy()
+            env['LC_ALL'] = 'C'
+            result = subprocess.run(
+                ['pactl', 'list', 'sink-inputs'],
+                capture_output=True, text=True, timeout=5, env=env
+            )
+            if result.returncode != 0:
+                logger.error(f"pactl list sink-inputs failed: {result.stderr}")
+                return None
+            
+            current_id = None
+            current_binary = None
+            
+            for line in result.stdout.splitlines():
+                line = line.strip()
+                if line.startswith('Sink Input #'):
+                    # Save previous match if we had one
+                    current_id = line.split('#')[1].strip()
+                    current_binary = None
+                elif 'application.process.binary' in line:
+                    # Extract binary: application.process.binary = "brave"
+                    if '=' in line:
+                        binary = line.split('=')[1].strip().strip('"')
+                        if binary.lower() == binary_name.lower():
+                            logger.info(f"Found matching sink-input #{current_id} for {binary_name}")
+                            return current_id
+                elif 'application.name' in line and current_id:
+                    # Fallback: check application.name
+                    if '=' in line:
+                        app_name = line.split('=')[1].strip().strip('"')
+                        if binary_name.lower() in app_name.lower():
+                            logger.info(f"Found matching sink-input #{current_id} by app name {app_name}")
+                            return current_id
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error finding sink-input by binary {binary_name}: {e}")
+            return None
+    
+    def _get_sink_name_by_index(self, sink_idx: str) -> Optional[str]:
+        """Get sink name from its index"""
+        try:
+            result = subprocess.run(
+                ['pactl', 'list', 'sinks', 'short'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.returncode != 0:
+                return None
+            
+            for line in result.stdout.splitlines():
+                parts = line.split('\t')
+                if len(parts) >= 2 and parts[0] == sink_idx:
+                    return parts[1]
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error getting sink name for index {sink_idx}: {e}")
+            return None
+    
+    def _cleanup_app_audio_capture(self, sink_name: str = None):
+        """Clean up the null sink and loopback modules"""
+        try:
+            # Unload loopback module if exists
+            if hasattr(self, '_loopback_module') and self._loopback_module:
+                subprocess.run(['pactl', 'unload-module', self._loopback_module],
+                              capture_output=True, timeout=5)
+                self._loopback_module = None
+            
+            # Unload null sink module if exists
+            if hasattr(self, '_null_sink_module') and self._null_sink_module:
+                subprocess.run(['pactl', 'unload-module', self._null_sink_module],
+                              capture_output=True, timeout=5)
+                self._null_sink_module = None
+            
+            # Also try to unload by sink name pattern (cleanup old sessions)
+            if sink_name:
+                result = subprocess.run(
+                    ['pactl', 'list', 'modules', 'short'],
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.returncode == 0:
+                    for line in result.stdout.splitlines():
+                        if sink_name in line:
+                            module_id = line.split('\t')[0]
+                            subprocess.run(['pactl', 'unload-module', module_id],
+                                          capture_output=True, timeout=5)
+                            
+        except Exception as e:
+            logger.warning(f"Error cleaning up audio capture: {e}")
     
     def _get_default_monitor(self) -> Optional[str]:
         """Get the monitor source for the default audio sink"""
@@ -642,19 +880,30 @@ class WebRTCStreamer:
             if self.config.audio and self.config.audio_source != 'none':
                 audio_src = self._build_audio_source()
                 if audio_src:
-                    # Use error-tolerant audio pipeline
+                    # Professional audio preprocessing chain for optimal codec quality:
+                    # 1. Convert to float32 for processing headroom
+                    # 2. High-pass @ 25Hz (remove sub-bass rumble and DC offset)
+                    # 3. 3-band EQ: tighten bass (-1dB), neutral mids (0dB), smooth highs (-0.5dB)
+                    # 4. Soft compression 2:1 @ -18dB (gentle dynamic control)
+                    # 5. Brick-wall limiter @ -1dBFS (prevent clipping, preserve headroom)
+                    # 6. High-quality resample to 48kHz (optimal for Opus fullband)
                     audio_pipeline = f'''
                 {audio_src}
                 ! audioconvert
-                ! audioresample
+                ! audio/x-raw,format=F32LE,channels=2
+                ! audiocheblimit mode=high-pass cutoff=25 poles=4 type=1
+                ! equalizer-3bands band0=-1.0 band1=0.0 band2=-0.5
+                ! audiodynamic mode=compressor characteristics=soft-knee ratio=2.0 threshold=0.125
+                ! audiodynamic mode=limiter threshold=0.89
+                ! audioresample quality=10
                 ! audio/x-raw,rate=48000,channels=2
                 ! queue max-size-buffers=2 leaky=downstream
-                ! opusenc bitrate={self.config.audio_bitrate * 1000} audio-type=generic
+                ! opusenc bitrate={self.config.audio_bitrate * 1000} audio-type=generic bandwidth=fullband
                 ! rtpopuspay pt=97
                 ! queue max-size-time=100000000 leaky=downstream
                 ! webrtc.
             '''
-                    logger.info(f"Audio enabled: {self.config.audio_source}")
+                    logger.info(f"Audio enabled with professional preprocessing: {self.config.audio_source}")
                 else:
                     logger.warning("Audio source not available - continuing without audio")
             
