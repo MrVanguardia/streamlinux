@@ -41,10 +41,6 @@ StreamLinux enables low-latency screen and audio streaming from Linux to Android
 
 StreamLinux v0.2.3 introduces a complete audio overhaul designed for audiophiles and professionals who demand pristine sound quality.
 
-<div align="center">
-<img src="docs/images/audio-app-selector.png" alt="Application Audio Selector" width="500">
-</div>
-
 ### Per-Application Audio Capture
 
 Stream audio from specific applications instead of your entire system. Perfect for:
@@ -140,7 +136,7 @@ StreamLinux is built using industry-standard open source technologies:
 | Platform | Package | Download |
 |----------|---------|----------|
 | Linux (Fedora/RHEL) | RPM | [streamlinux-0.2.3-1.alpha.fc43.x86_64.rpm](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.3-alpha/streamlinux-0.2.3-1.alpha.fc43.x86_64.rpm) |
-| Android | APK | [StreamLinux-0.2.3.apk](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.3-alpha/StreamLinux-0.2.3.apk) |
+| Android | APK | [StreamLinux-0.2.3-alpha.apk](https://github.com/MrVanguardia/streamlinux/releases/download/v0.2.3-alpha/StreamLinux-0.2.3-alpha.apk) |
 
 [![Download](https://img.shields.io/badge/Download-Releases-blue?style=for-the-badge&logo=github)](https://github.com/MrVanguardia/streamlinux/releases)
 
