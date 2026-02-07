@@ -149,25 +149,36 @@ if [ "$BUILD_TYPE" == "release" ]; then
         if [ -z "$KEYSTORE_PATH" ]; then
             DEBUG_KEYSTORE="$HOME/.android/debug.keystore"
             if [ -f "$DEBUG_KEYSTORE" ]; then
-                # Sign with jarsigner
-                jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-                  -keystore "$DEBUG_KEYSTORE" \
-                  -storepass android \
-                  -keypass android \
-                  "$APK_PATH" \
-                  androiddebugkey 2>&1 | grep -E "(signing|signed)" || true
-                
-                # Zipalign the APK
-                echo -e "${YELLOW}  Optimizing APK with zipalign...${NC}"
+                # Zipalign FIRST (required for Android R+ / API 30+)
+                echo -e "${YELLOW}  Aligning APK with zipalign...${NC}"
                 ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -name zipalign -type f 2>/dev/null | head -1)
-                if [ -n "$ZIPALIGN" ]; then
-                    SIGNED_APK="$PROJECT_ROOT/app/build/outputs/apk/release/app-release-signed.apk"
-                    "$ZIPALIGN" -v 4 "$APK_PATH" "$SIGNED_APK" 2>&1 | grep -E "(Verification|successful)" || true
-                    APK_PATH="$SIGNED_APK"
-                    echo -e "${GREEN}  ✓ APK signed and optimized${NC}"
-                else
-                    echo -e "${YELLOW}  Warning: zipalign not found, using signed but unoptimized APK${NC}"
+                if [ -z "$ZIPALIGN" ]; then
+                    echo -e "${RED}  Error: zipalign not found in Android SDK build-tools${NC}"
+                    exit 1
                 fi
+                
+                ALIGNED_APK="$PROJECT_ROOT/app/build/outputs/apk/release/app-release-aligned.apk"
+                "$ZIPALIGN" -p -f -v 4 "$APK_PATH" "$ALIGNED_APK" 2>&1 | grep -E "(Verification|successful)" || true
+                
+                # Sign with apksigner (v2/v3 scheme for Android R+)
+                echo -e "${YELLOW}  Signing APK with apksigner...${NC}"
+                APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f 2>/dev/null | head -1)
+                if [ -z "$APKSIGNER" ]; then
+                    echo -e "${RED}  Error: apksigner not found in Android SDK build-tools${NC}"
+                    exit 1
+                fi
+                
+                SIGNED_APK="$PROJECT_ROOT/app/build/outputs/apk/release/app-release-signed.apk"
+                "$APKSIGNER" sign \
+                  --ks "$DEBUG_KEYSTORE" \
+                  --ks-pass pass:android \
+                  --ks-key-alias androiddebugkey \
+                  --key-pass pass:android \
+                  --out "$SIGNED_APK" \
+                  "$ALIGNED_APK" 2>&1 | grep -E "(Signed|Success)" || true
+                
+                APK_PATH="$SIGNED_APK"
+                echo -e "${GREEN}  ✓ APK aligned and signed with v2/v3 scheme${NC}"
             else
                 echo -e "${YELLOW}  Warning: Debug keystore not found at $DEBUG_KEYSTORE${NC}"
                 echo -e "${YELLOW}  APK will remain unsigned and cannot be installed${NC}"
