@@ -1,18 +1,18 @@
 #!/bin/bash
 #
 # StreamLinux Android APK Build Script
-# Version: 0.2.0-alpha
+# Version: 0.2.3-alpha
 # Requires: Java 21, Android SDK, Android Build Tools
 #
 # Usage:
 #   ./build-apk.sh          # Build debug APK
-#   ./build-apk.sh release  # Build release APK (requires signing config)
+#   ./build-apk.sh release  # Build release APK (auto-signed with debug keystore)
 #   ./build-apk.sh clean    # Clean build artifacts
 #
 
 set -e
 
-VERSION="0.2.0-alpha"
+VERSION="0.2.3-alpha"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
 
@@ -141,8 +141,44 @@ if [ "$BUILD_TYPE" == "release" ]; then
     ./gradlew assembleRelease --no-daemon
     APK_PATH="$PROJECT_ROOT/app/build/outputs/apk/release/app-release-unsigned.apk"
     
+    # Sign the APK if unsigned
+    if [ -f "$APK_PATH" ]; then
+        echo -e "${YELLOW}  Signing APK...${NC}"
+        
+        # Use debug keystore if no production keystore is configured
+        if [ -z "$KEYSTORE_PATH" ]; then
+            DEBUG_KEYSTORE="$HOME/.android/debug.keystore"
+            if [ -f "$DEBUG_KEYSTORE" ]; then
+                # Sign with jarsigner
+                jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+                  -keystore "$DEBUG_KEYSTORE" \
+                  -storepass android \
+                  -keypass android \
+                  "$APK_PATH" \
+                  androiddebugkey 2>&1 | grep -E "(signing|signed)" || true
+                
+                # Zipalign the APK
+                echo -e "${YELLOW}  Optimizing APK with zipalign...${NC}"
+                ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -name zipalign -type f 2>/dev/null | head -1)
+                if [ -n "$ZIPALIGN" ]; then
+                    SIGNED_APK="$PROJECT_ROOT/app/build/outputs/apk/release/app-release-signed.apk"
+                    "$ZIPALIGN" -v 4 "$APK_PATH" "$SIGNED_APK" 2>&1 | grep -E "(Verification|successful)" || true
+                    APK_PATH="$SIGNED_APK"
+                    echo -e "${GREEN}  ✓ APK signed and optimized${NC}"
+                else
+                    echo -e "${YELLOW}  Warning: zipalign not found, using signed but unoptimized APK${NC}"
+                fi
+            else
+                echo -e "${YELLOW}  Warning: Debug keystore not found at $DEBUG_KEYSTORE${NC}"
+                echo -e "${YELLOW}  APK will remain unsigned and cannot be installed${NC}"
+            fi
+        fi
+    fi
+    
     # If signed APK exists, use that instead
-    if [ -f "$PROJECT_ROOT/app/build/outputs/apk/release/app-release.apk" ]; then
+    if [ -f "$PROJECT_ROOT/app/build/outputs/apk/release/app-release-signed.apk" ]; then
+        APK_PATH="$PROJECT_ROOT/app/build/outputs/apk/release/app-release-signed.apk"
+    elif [ -f "$PROJECT_ROOT/app/build/outputs/apk/release/app-release.apk" ]; then
         APK_PATH="$PROJECT_ROOT/app/build/outputs/apk/release/app-release.apk"
     fi
 else
@@ -162,7 +198,11 @@ echo -e "${YELLOW}[5/5] Finalizing...${NC}"
 OUTPUT_DIR="$PROJECT_ROOT/../releases/apk"
 mkdir -p "$OUTPUT_DIR"
 
-APK_NAME="streamlinux-${VERSION}-${BUILD_TYPE}.apk"
+if [ "$BUILD_TYPE" == "release" ]; then
+    APK_NAME="StreamLinux-${VERSION}.apk"
+else
+    APK_NAME="streamlinux-${VERSION}-${BUILD_TYPE}.apk"
+fi
 cp "$APK_PATH" "$OUTPUT_DIR/$APK_NAME"
 
 # Get APK info
