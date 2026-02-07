@@ -162,6 +162,11 @@ class WebRTCStreamer:
         self._portal = None
         self._pipewire_node_id = None
         
+        # Application audio capture
+        self._original_app_sink = None  # Original sink of the app before moving
+        self._moved_sink_input_id = None  # ID of the sink-input we moved
+        self._null_sink_module = None
+        
         # Connection management - only ONE active stream at a time
         self._pipeline_lock = threading.Lock()
         self._active_peer_id = None  # Currently streaming to this peer
@@ -574,34 +579,32 @@ class WebRTCStreamer:
             self._null_sink_module = result.stdout.strip()
             logger.info(f"Created null sink module: {self._null_sink_module}")
             
-            # Create loopback: copies audio from app's current sink to our capture sink
-            # First, get the current sink of the application
+            # Get the current sink of the application BEFORE moving it
             app_sink = self._get_sink_input_sink(app_id)
             if not app_sink:
-                logger.error(f"Could not find sink for app {app_id}")
-                return None
+                logger.warning(f"Could not find current sink for app {app_id}, continuing anyway")
+            else:
+                # Save original sink so we can restore it later
+                self._original_app_sink = app_sink
+                logger.info(f"Saved original sink: {app_sink}")
             
-            # Create loopback module to copy from app's sink monitor to our null sink
-            logger.info(f"Creating loopback from {app_sink}.monitor")
+            # Move the sink-input to our null sink (this isolates the app's audio)
+            logger.info(f"Moving sink-input {app_id} to {sink_name}")
             result = subprocess.run(
-                ['pactl', 'load-module', 'module-loopback',
-                 f'source={app_sink}.monitor',
-                 f'sink={sink_name}',
-                 'latency_msec=1',
-                 'source_dont_move=true',
-                 'sink_dont_move=true'],
+                ['pactl', 'move-sink-input', app_id, sink_name],
                 capture_output=True, text=True, timeout=5
             )
             if result.returncode != 0:
-                logger.error(f"Failed to create loopback: {result.stderr}")
+                logger.error(f"Failed to move sink-input: {result.stderr}")
                 # Cleanup the null sink
                 self._cleanup_app_audio_capture(sink_name)
                 return None
             
-            self._loopback_module = result.stdout.strip()
-            logger.info(f"Created loopback module: {self._loopback_module}")
+            # Save the sink-input ID so we can restore it later
+            self._moved_sink_input_id = app_id
+            logger.info(f"Successfully moved app audio to isolated sink")
             
-            # Return the monitor of our null sink
+            # Return the monitor of our null sink (now contains ONLY this app's audio)
             return f"{sink_name}.monitor"
             
         except Exception as e:
@@ -699,16 +702,28 @@ class WebRTCStreamer:
             return None
     
     def _cleanup_app_audio_capture(self, sink_name: str = None):
-        """Clean up the null sink and loopback modules"""
+        """Clean up the null sink and restore the application to its original sink"""
         try:
-            # Unload loopback module if exists
-            if hasattr(self, '_loopback_module') and self._loopback_module:
-                subprocess.run(['pactl', 'unload-module', self._loopback_module],
-                              capture_output=True, timeout=5)
-                self._loopback_module = None
+            # Restore the sink-input to its original sink if we moved it
+            if hasattr(self, '_moved_sink_input_id') and self._moved_sink_input_id:
+                if hasattr(self, '_original_app_sink') and self._original_app_sink:
+                    logger.info(f"Restoring sink-input {self._moved_sink_input_id} to original sink: {self._original_app_sink}")
+                    result = subprocess.run(
+                        ['pactl', 'move-sink-input', self._moved_sink_input_id, self._original_app_sink],
+                        capture_output=True, text=True, timeout=5
+                    )
+                    if result.returncode != 0:
+                        logger.warning(f"Could not restore sink-input (app may have closed): {result.stderr}")
+                else:
+                    logger.debug("No original sink saved, skipping restore")
+                    
+                # Clear tracking variables
+                self._moved_sink_input_id = None
+                self._original_app_sink = None
             
             # Unload null sink module if exists
             if hasattr(self, '_null_sink_module') and self._null_sink_module:
+                logger.info(f"Unloading null sink module: {self._null_sink_module}")
                 subprocess.run(['pactl', 'unload-module', self._null_sink_module],
                               capture_output=True, timeout=5)
                 self._null_sink_module = None
@@ -723,6 +738,7 @@ class WebRTCStreamer:
                     for line in result.stdout.splitlines():
                         if sink_name in line:
                             module_id = line.split('\t')[0]
+                            logger.debug(f"Cleaning up orphaned module: {module_id}")
                             subprocess.run(['pactl', 'unload-module', module_id],
                                           capture_output=True, timeout=5)
                             
@@ -857,6 +873,11 @@ class WebRTCStreamer:
                 logger.info("Stopping existing pipeline...")
                 self.pipeline.set_state(Gst.State.NULL)
                 self.pipeline = None
+            
+            # Cleanup any previous app audio capture before starting new one
+            if hasattr(self, '_moved_sink_input_id') and self._moved_sink_input_id:
+                logger.info("Cleaning up previous app audio capture...")
+                self._cleanup_app_audio_capture()
                 
             # Get display
             display = os.environ.get('DISPLAY', ':0')
@@ -890,11 +911,22 @@ class WebRTCStreamer:
                     audio_pipeline = f'''
                 {audio_src}
                 ! audioconvert
-                ! audio/x-raw,format=F32LE,channels=2
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
                 ! audiocheblimit mode=high-pass cutoff=25 poles=4 type=1
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
+                ! audioconvert
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
                 ! equalizer-3bands band0=-1.0 band1=0.0 band2=-0.5
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
+                ! audioconvert
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
                 ! audiodynamic mode=compressor characteristics=soft-knee ratio=2.0 threshold=0.125
-                ! audiodynamic mode=limiter threshold=0.89
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
+                ! audioconvert
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
+                ! audiodynamic mode=compressor characteristics=hard-knee ratio=20.0 threshold=0.89
+                ! audio/x-raw,format=F32LE,channels=2,layout=interleaved
+                ! audioconvert
                 ! audioresample quality=10
                 ! audio/x-raw,rate=48000,channels=2
                 ! queue max-size-buffers=2 leaky=downstream

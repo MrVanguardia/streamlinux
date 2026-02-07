@@ -152,6 +152,11 @@ update-desktop-database %{_datadir}/applications &>/dev/null || :
 - Audio: Fixed per-application audio capture detection
 - Audio: Added support for selecting any application for audio capture
 - Audio: Dynamic sink-input discovery by binary name
+- Audio: Fixed GStreamer pipeline negotiation with explicit capsfilters
+- Audio: Fixed audiodynamic limiter (using hard-knee compressor)
+- Audio: Isolated per-app audio capture (move sink-input instead of loopback)
+- Audio: Automatic restoration of apps to original sink on source change
+- Audio: Professional preprocessing chain (HPF, EQ, compressor, limiter)
 
 * Wed Jan 29 2026 Vanguardia Studio <contact@vanguardiastudio.us> - 0.2.0-1.alpha
 - Security: Fixed 14 vulnerabilities from penetration test
