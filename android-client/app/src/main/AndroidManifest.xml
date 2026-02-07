@@ -20,6 +20,10 @@
     
     <!-- Audio settings control -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    
+    <!-- Bluetooth audio routing -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 

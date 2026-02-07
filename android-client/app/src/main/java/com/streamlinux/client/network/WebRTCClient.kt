@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import android.media.AudioAttributes
+import android.os.Build
 import org.webrtc.*
 import org.webrtc.audio.JavaAudioDeviceModule
 
@@ -100,13 +102,22 @@ class WebRTCClient(
             )
             val decoderFactory = DefaultVideoDecoderFactory(eglBase?.eglBaseContext)
 
-            // Configure audio device module for stereo output
-            val audioDeviceModule = JavaAudioDeviceModule.builder(context)
+            // Configure audio device module for stereo media output
+            // CRITICAL: Use USAGE_MEDIA so audio routes through A2DP (Bluetooth music)
+            // instead of SCO (Bluetooth phone call) which is WebRTC's default
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                .build()
+            
+            val audioDeviceModuleBuilder = JavaAudioDeviceModule.builder(context)
                 .setUseStereoOutput(true)  // Enable stereo output
                 .setUseStereoInput(false)   // We're not sending audio
                 .setAudioRecordErrorCallback(null)
                 .setAudioTrackErrorCallback(null)
-                .createAudioDeviceModule()
+                .setAudioAttributes(audioAttributes)
+            
+            val audioDeviceModule = audioDeviceModuleBuilder.createAudioDeviceModule()
 
             peerConnectionFactory = PeerConnectionFactory.builder()
                 .setVideoEncoderFactory(encoderFactory)

@@ -1,7 +1,15 @@
 package com.streamlinux.client.ui
 
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioAttributes
+import android.media.AudioDeviceCallback
+import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
@@ -72,6 +80,10 @@ class StreamActivity : ComponentActivity() {
     private var previousSpeakerphone: Boolean = false
     private var audioFocusRequest: AudioFocusRequest? = null
     private var hasAudioFocus: Boolean = false
+    
+    // Bluetooth audio routing
+    private var audioDeviceCallback: AudioDeviceCallback? = null
+    private var bluetoothReceiver: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -144,9 +156,8 @@ class StreamActivity : ComponentActivity() {
     /**
      * Automatically configure optimal audio output:
      * - Request audio focus for media playback
-     * - If headphones/bluetooth connected -> use them
-     * - If no headphones -> use speaker (loudspeaker)
-     * Audio will play during screen recording because we use STREAM_MUSIC with proper focus
+     * - Detect Bluetooth A2DP, wired headset, or speaker
+     * - Register callbacks for dynamic audio device changes (BT connect/disconnect)
      */
     private fun setupOptimalAudioOutput() {
         try {
@@ -154,48 +165,244 @@ class StreamActivity : ComponentActivity() {
             previousAudioMode = audioManager.mode
             previousSpeakerphone = audioManager.isSpeakerphoneOn
             
-            // Request audio focus - this is critical for audio to play properly
-            // and to continue during screen recording
+            // Request audio focus
             requestAudioFocus()
             
-            // Check if headphones or bluetooth are connected
-            val hasWiredHeadset = audioManager.isWiredHeadsetOn
-            val hasBluetoothA2dp = audioManager.isBluetoothA2dpOn
-            val hasBluetoothSco = audioManager.isBluetoothScoOn
+            // Detect and route to best available audio device
+            routeAudioToOptimalDevice()
             
-            val hasExternalAudio = hasWiredHeadset || hasBluetoothA2dp || hasBluetoothSco
-            
-            if (hasExternalAudio) {
-                // External audio device detected - use it (don't force speaker)
-                audioManager.mode = AudioManager.MODE_NORMAL
-                audioManager.isSpeakerphoneOn = false
-                android.util.Log.d("StreamActivity", "External audio detected: wired=$hasWiredHeadset, bt_a2dp=$hasBluetoothA2dp, bt_sco=$hasBluetoothSco")
-            } else {
-                // No external audio - force speaker for loud playback
-                // Using MODE_NORMAL instead of MODE_IN_COMMUNICATION for better compatibility
-                // with screen recording
-                audioManager.mode = AudioManager.MODE_NORMAL
-                audioManager.isSpeakerphoneOn = true
-                android.util.Log.d("StreamActivity", "No external audio - using speaker")
-            }
-            
-            // Ensure media volume is adequate
-            val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-            val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-            
-            // If volume is very low and using speaker, set to 70%
-            if (!hasExternalAudio && currentVolume < maxVolume * 0.3) {
-                audioManager.setStreamVolume(
-                    AudioManager.STREAM_MUSIC,
-                    (maxVolume * 0.7).toInt(),
-                    0
-                )
-                android.util.Log.d("StreamActivity", "Volume boosted to 70%")
-            }
+            // Register for dynamic audio device changes (Bluetooth connect/disconnect)
+            registerAudioDeviceCallbacks()
             
             android.util.Log.d("StreamActivity", "Audio configured: mode=${audioManager.mode}, speaker=${audioManager.isSpeakerphoneOn}, focus=$hasAudioFocus")
         } catch (e: Exception) {
             android.util.Log.e("StreamActivity", "Failed to setup audio output", e)
+        }
+    }
+    
+    /**
+     * Detect available audio output devices and route to the best one.
+     * Priority: Bluetooth A2DP > Wired Headset > Speaker
+     */
+    private fun routeAudioToOptimalDevice() {
+        try {
+            val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+            
+            var hasBluetoothA2dp = false
+            var hasWiredHeadset = false
+            var bluetoothDevice: AudioDeviceInfo? = null
+            
+            for (device in devices) {
+                when (device.type) {
+                    AudioDeviceInfo.TYPE_BLUETOOTH_A2DP -> {
+                        hasBluetoothA2dp = true
+                        bluetoothDevice = device
+                        android.util.Log.d("StreamActivity", "Found Bluetooth A2DP: ${device.productName}")
+                    }
+                    AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> {
+                        // SCO is for phone calls - we prefer A2DP but accept SCO
+                        if (!hasBluetoothA2dp) {
+                            bluetoothDevice = device
+                            android.util.Log.d("StreamActivity", "Found Bluetooth SCO: ${device.productName}")
+                        }
+                    }
+                    AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                    AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                    AudioDeviceInfo.TYPE_USB_HEADSET -> {
+                        hasWiredHeadset = true
+                        android.util.Log.d("StreamActivity", "Found wired headset: ${device.productName}")
+                    }
+                    AudioDeviceInfo.TYPE_BLE_HEADSET,
+                    AudioDeviceInfo.TYPE_BLE_SPEAKER -> {
+                        if (!hasBluetoothA2dp) {
+                            hasBluetoothA2dp = true
+                            bluetoothDevice = device
+                            android.util.Log.d("StreamActivity", "Found BLE audio: ${device.productName}")
+                        }
+                    }
+                }
+            }
+            
+            when {
+                hasBluetoothA2dp || bluetoothDevice != null -> {
+                    // Route to Bluetooth
+                    audioManager.mode = AudioManager.MODE_NORMAL
+                    audioManager.isSpeakerphoneOn = false
+                    
+                    // On API 31+ we can explicitly set the communication device
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && bluetoothDevice != null) {
+                        audioManager.setCommunicationDevice(bluetoothDevice)
+                        android.util.Log.d("StreamActivity", "Set communication device to Bluetooth: ${bluetoothDevice.productName}")
+                    }
+                    
+                    android.util.Log.d("StreamActivity", "Audio routed to Bluetooth")
+                }
+                hasWiredHeadset -> {
+                    // Route to wired headset (happens automatically)
+                    audioManager.mode = AudioManager.MODE_NORMAL
+                    audioManager.isSpeakerphoneOn = false
+                    
+                    // Clear any explicit device routing on API 31+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        audioManager.clearCommunicationDevice()
+                    }
+                    
+                    android.util.Log.d("StreamActivity", "Audio routed to wired headset")
+                }
+                else -> {
+                    // No external audio - use speaker
+                    audioManager.mode = AudioManager.MODE_NORMAL
+                    audioManager.isSpeakerphoneOn = true
+                    
+                    // Clear any explicit device routing on API 31+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        audioManager.clearCommunicationDevice()
+                    }
+                    
+                    // Ensure media volume is adequate
+                    val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                    if (currentVolume < maxVolume * 0.3) {
+                        audioManager.setStreamVolume(
+                            AudioManager.STREAM_MUSIC,
+                            (maxVolume * 0.7).toInt(),
+                            0
+                        )
+                        android.util.Log.d("StreamActivity", "Volume boosted to 70%")
+                    }
+                    
+                    android.util.Log.d("StreamActivity", "Audio routed to speaker")
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("StreamActivity", "Failed to route audio", e)
+            // Fallback: just use speaker
+            audioManager.mode = AudioManager.MODE_NORMAL
+            audioManager.isSpeakerphoneOn = true
+        }
+    }
+    
+    /**
+     * Register callbacks to detect when audio devices are connected/disconnected
+     * (e.g., Bluetooth headphones connected after stream starts)
+     */
+    private fun registerAudioDeviceCallbacks() {
+        // AudioDeviceCallback for dynamic device changes (API 23+)
+        audioDeviceCallback = object : AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
+                addedDevices?.forEach { device ->
+                    val isBluetoothOrHeadset = device.type in listOf(
+                        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+                        AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                        AudioDeviceInfo.TYPE_BLE_HEADSET,
+                        AudioDeviceInfo.TYPE_BLE_SPEAKER,
+                        AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                        AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                        AudioDeviceInfo.TYPE_USB_HEADSET
+                    )
+                    if (isBluetoothOrHeadset && device.isSink) {
+                        android.util.Log.d("StreamActivity", "Audio device connected: ${device.productName} (type=${device.type})")
+                        // Re-route to the new device
+                        routeAudioToOptimalDevice()
+                    }
+                }
+            }
+            
+            override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>?) {
+                removedDevices?.forEach { device ->
+                    val isBluetoothOrHeadset = device.type in listOf(
+                        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+                        AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+                        AudioDeviceInfo.TYPE_BLE_HEADSET,
+                        AudioDeviceInfo.TYPE_BLE_SPEAKER,
+                        AudioDeviceInfo.TYPE_WIRED_HEADSET,
+                        AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+                        AudioDeviceInfo.TYPE_USB_HEADSET
+                    )
+                    if (isBluetoothOrHeadset) {
+                        android.util.Log.d("StreamActivity", "Audio device disconnected: ${device.productName} (type=${device.type})")
+                        // Re-route to next best device
+                        routeAudioToOptimalDevice()
+                    }
+                }
+            }
+        }
+        audioManager.registerAudioDeviceCallback(audioDeviceCallback, null)
+        
+        // Also register BroadcastReceiver for ACTION_AUDIO_BECOMING_NOISY
+        // (triggered when headphones/BT disconnects - audio should go to speaker)
+        bluetoothReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    AudioManager.ACTION_AUDIO_BECOMING_NOISY -> {
+                        android.util.Log.d("StreamActivity", "Audio becoming noisy - device disconnected")
+                        routeAudioToOptimalDevice()
+                    }
+                    BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                        android.util.Log.d("StreamActivity", "Bluetooth device ACL connected")
+                        // Small delay to let A2DP profile connect
+                        window.decorView.postDelayed({
+                            routeAudioToOptimalDevice()
+                        }, 1500)
+                    }
+                    BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
+                        android.util.Log.d("StreamActivity", "Bluetooth device ACL disconnected")
+                        routeAudioToOptimalDevice()
+                    }
+                    BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED -> {
+                        val state = intent.getIntExtra(BluetoothAdapter.EXTRA_CONNECTION_STATE, -1)
+                        android.util.Log.d("StreamActivity", "Bluetooth connection state changed: $state")
+                        if (state == BluetoothAdapter.STATE_CONNECTED) {
+                            window.decorView.postDelayed({
+                                routeAudioToOptimalDevice()
+                            }, 1500)
+                        } else if (state == BluetoothAdapter.STATE_DISCONNECTED) {
+                            routeAudioToOptimalDevice()
+                        }
+                    }
+                }
+            }
+        }
+        
+        val filter = IntentFilter().apply {
+            addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+            addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+            addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+            addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED)
+        }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(bluetoothReceiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(bluetoothReceiver, filter)
+        }
+        
+        android.util.Log.d("StreamActivity", "Audio device callbacks registered")
+    }
+    
+    /**
+     * Unregister audio device callbacks
+     */
+    private fun unregisterAudioDeviceCallbacks() {
+        try {
+            audioDeviceCallback?.let {
+                audioManager.unregisterAudioDeviceCallback(it)
+            }
+            audioDeviceCallback = null
+            
+            bluetoothReceiver?.let {
+                unregisterReceiver(it)
+            }
+            bluetoothReceiver = null
+            
+            // Clear communication device on API 31+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.clearCommunicationDevice()
+            }
+            
+            android.util.Log.d("StreamActivity", "Audio device callbacks unregistered")
+        } catch (e: Exception) {
+            android.util.Log.e("StreamActivity", "Failed to unregister audio callbacks", e)
         }
     }
     
@@ -294,9 +501,11 @@ class StreamActivity : ComponentActivity() {
      */
     private fun restoreAudioSettings() {
         try {
-            // Release audio focus first
+            // Unregister audio device callbacks
+            unregisterAudioDeviceCallbacks()
+            // Release audio focus
             releaseAudioFocus()
-            // Then restore previous audio mode
+            // Restore previous audio mode
             audioManager.mode = previousAudioMode
             audioManager.isSpeakerphoneOn = previousSpeakerphone
             android.util.Log.d("StreamActivity", "Audio settings restored")
