@@ -1,0 +1,48 @@
+id: org.streamlinux.StreamLinux
+runtime: org.gnome.Platform
+runtime-version: '46'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+command: streamlinux-gui
+finish-args:
+  - --socket=x11
+  - --socket=wayland
+  - --share=ipc
+  - --share=network
+  - --filesystem=xdg-run/pipewire-0
+  - --socket=pulseaudio
+  - --device=all
+
+modules:
+  - name: signaling-server
+    buildsystem: simple
+    build-options:
+     
+      env:
+        PATH: /usr/lib/sdk/golang/bin:/usr/bin:/bin
+        GOPROXY: https://proxy.golang.org,direct
+    build-commands:
+      
+      - go build -mod=vendor -o /app/bin/streamlinux-server ./cmd/server
+    sources:
+      - type: dir
+        path: signaling-server
+
+  - name: linux-host
+    buildsystem: cmake
+    sources:
+      - type: dir
+        path: linux-host
+
+  - name: linux-gui
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/share/streamlinux-gui
+      - cp -r * /app/share/streamlinux-gui/
+      - echo '#!/bin/sh' > /app/bin/streamlinux-gui
+      - echo 'python3 /app/share/streamlinux-gui/streamlinux_gui.py "$@"' >> /app/bin/streamlinux-gui
+      - chmod +x /app/bin/streamlinux-gui
+    sources:
+      - type: dir
+        path: linux-gui
