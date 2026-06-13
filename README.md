@@ -336,7 +336,7 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**StreamLinux** is an open source project by [Vanguardia Studio](https://vanguardiastudio.us)
+**StreamLinux** is an open source project by [Atlas Group Corp]()
 
 <br />
 
